@@ -5,27 +5,14 @@ version 1.0
 task index {
 	input {
 		File inputBam
-		String? baseFile
 	}
 
-	command <<<
+	command {
 		samtools index ~{inputBam}
-		# syntax error:
-		#baseFile=~(basename "${inputBam}")
-		#baseFile=~(basename "~{inputBam}")
-		#
-		# sets baseFile to an empty string:
-		#baseFile=basename "${inputBam}"
-		#baseFile=basename "~{inputBam}"
-		#
-		# Permission denied error:
-		#baseFile=basename ~{inputBam}
-		echo ~{inputBam}
-		echo ~{baseFile}
-	>>>
+	}
 
 	output {
-		File bamIndex = "~{baseFile}.bam.bai"
+		File bamIndex = "${inputBam}.bai"
 	}
 
 	runtime {
