@@ -12,7 +12,7 @@ task index {
 	}
 
 	output {
-		File bamIndex = "$(inputBam).bai"
+		File bamIndex = "${inputBam}.bai"
 	}
 
 	runtime {
@@ -23,15 +23,19 @@ task index {
 task getReadLength {
 	input {
 		File inputBam
+		File bamIndex
 	}
 
 	command <<<
-		OUT=$(goleft covstats ~{inputBam} | awk 'FNR == 2 {print $(NF-3)}')
-		echo $(OUT)
+		goleft covstats "in.bam" >> this.txt
+		COVOUT=$(head -2 this.txt | tail -1 this.txt)
+		read -a COVARRAY <<< "$COVOUT"
+		echo ${COVARRAY[11]} >> readLength
+		rm this.txt
 	>>>
 
 	output {
-		File averageReadLength = "$(OUT)"
+		File readLength = "readLength"
 	}
 
 	runtime {
@@ -45,7 +49,7 @@ workflow goleftwdl {
 	}
 
 	call index { input: inputBam = inputBam }
-	call getReadLength { input: inputBam = inputBam }
+	call getReadLength { input: inputBam = inputBam, bamIndex = index.bamIndex }
 
 	meta {
         author: "Ash O'Farrell"
