@@ -11,7 +11,9 @@ task index {
 		samtools index ~{inputBam}
 	}
 
-	# we shouldn't need to capture the output
+	output {
+		File bamIndex = "$(inputBam).bai"
+	}
 
 	runtime {
         docker: "quay.io/biocontainers/goleft:0.2.0--0"
@@ -29,7 +31,7 @@ task getReadLength {
 	>>>
 
 	output {
-		File readLength
+		File averageReadLength = "$(OUT)"
 	}
 
 	runtime {
