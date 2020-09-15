@@ -2,17 +2,31 @@ version 1.0
 
 # Currently assumes only one bam is the input
 
+
+# First of all, we must generate a bai file.
+# Yes, for this particular task I could in
+# theory get around this by just forcing the
+# user to provide their own bai file, but
+# sort of thing is a common use case for WDL
+# so it shouldn't be difficult, and I'll need
+# to learn how to do it sooner or later.
 task index {
 	input {
 		File inputBam
+		String? outputBamPath
 	}
 
-	command {
+	String outputPath = select_first([outputBamPath, basename(inputBam)])
+	String bamIndexPath = sub(outputPath, "\.bam$", ".bai")
+
+
+	command <<<
 		samtools index ~{inputBam}
-	}
+	>>>
 
 	output {
-		File bamIndex = "${inputBam}.bai"
+		File bamIndex = outputPath
+		File indexPath = bamIndexPath
 	}
 
 	runtime {
@@ -48,7 +62,9 @@ workflow goleftwdl {
 		File inputBam
 	}
 
-	call index { input: inputBam = inputBam }
+	# Tried putting baseIndex or index.baseIndex in here as
+	# an input but to no avail
+	call index { input: inputBam = inputBam, fileName = fileName }
 	call getReadLength { input: inputBam = inputBam, bamIndex = index.bamIndex }
 
 	meta {
