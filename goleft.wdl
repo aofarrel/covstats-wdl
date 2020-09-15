@@ -1,4 +1,5 @@
 version 1.0
+
 # Currently assumes only one bam is the input
 
 task index {
