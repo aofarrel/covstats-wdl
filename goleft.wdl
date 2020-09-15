@@ -5,32 +5,27 @@ version 1.0
 task index {
 	input {
 		File bamFile
-		String? outputBamPath
+		String? bamDir
 	}
 
-	String outputPath = select_first([outputBamPath, basename(bamFile)])
-	String bamIndexPath = outputPath + ".bai"
-
-
+	String bamName = basename(bamFile)
+	
 	command <<<
-		bash -c '
-		set -e
-		# Make sure outputBamPath does not exist.
-		if [ ! -f ~{outputPath} ]
-		then
-			mkdir -p "$(dirname ~{outputPath})"
-			ln ~{bamFile} ~{outputPath}
-		fi
-		echo outputPath
-		echo ~{outputPath}
-		echo bamIndexPath
-		echo ~{bamIndexPath}
-		samtools index ~{outputPath} ~{bamFile}'
+		pwd
+		echo bamName
+		echo ~{bamName}
+		echo bamDir
+		echo ~{bamDir}
+		echo bamDir2
+		echo dirname ~{bamFile}
+		echo bamDir3
+		echo "${bamFile%/*}"
+		# how many more iterations of https://stackoverflow.com/questions/23103042/unix-command-to-get-file-path-without-basename will this take
+		samtools index ~{bamFile}
 	>>>
 
 	output {
-		File indexedBam = outputPath
-		File index = bamIndexPath
+		File index = bamDir + bamName + ".bai"
 	}
 
 	runtime {
@@ -41,7 +36,7 @@ task index {
 task getReadLength {
 	input {
 		File bamFile
-		File indexPath
+		File index
 	}
 
 	command <<<
@@ -64,11 +59,11 @@ task getReadLength {
 workflow goleftwdl {
 	input {
 		File bamFile
-		String outputBamPath
+		String bamDir
 	}
 
-	call index { input: bamFile = bamFile, outputBamPath = outputBamPath }
-	call getReadLength { input: bamFile = bamFile, indexPath = index.indexedBam }
+	call index { input: bamFile = bamFile, bamDir = bamDir }
+	call getReadLength { input: bamFile = bamFile, index = index.index }
 
 	meta {
         author: "Ash O'Farrell"
