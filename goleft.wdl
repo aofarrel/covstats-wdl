@@ -5,16 +5,6 @@ version 1.0
 task index {
 	input {
 		File inputBam
-<<<<<<< Updated upstream
-	}
-
-	command {
-		samtools index ~{inputBam}
-	}
-
-	output {
-		File bamIndex = "${inputBam}.bai"
-=======
 		String? outputBamPath
 	}
 
@@ -29,7 +19,6 @@ task index {
 	output {
 		File bamIndex = outputPath
 		File indexPath = bamIndexPath
->>>>>>> Stashed changes
 	}
 
 	runtime {
