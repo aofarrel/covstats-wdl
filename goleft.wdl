@@ -4,21 +4,33 @@ version 1.0
 
 task index {
 	input {
-		File inputBam
+		File bamFile
 		String? outputBamPath
 	}
 
-	String outputPath = select_first([outputBamPath, basename(inputBam)])
+	String outputPath = select_first([outputBamPath, basename(bamFile)])
 	String bamIndexPath = outputPath + ".bai"
 
 
 	command <<<
-		samtools index ~{inputBam}
+		bash -c '
+		set -e
+		# Make sure outputBamPath does not exist.
+		if [ ! -f ~{outputPath} ]
+		then
+			mkdir -p "$(dirname ~{outputPath})"
+			ln ~{bamFile} ~{outputPath}
+		fi
+		echo outputPath
+		echo ~{outputPath}
+		echo bamIndexPath
+		echo ~{bamIndexPath}
+		samtools index ~{outputPath} ~{bamFile}'
 	>>>
 
 	output {
-		File bamIndex = outputPath
-		File indexPath = bamIndexPath
+		File indexedBam = outputPath
+		File index = bamIndexPath
 	}
 
 	runtime {
@@ -28,8 +40,8 @@ task index {
 
 task getReadLength {
 	input {
-		File inputBam
-		File bamIndex
+		File bamFile
+		File indexPath
 	}
 
 	command <<<
@@ -51,11 +63,12 @@ task getReadLength {
 
 workflow goleftwdl {
 	input {
-		File inputBam
+		File bamFile
+		String outputBamPath
 	}
 
-	call index { input: inputBam = inputBam }
-	call getReadLength { input: inputBam = inputBam, bamIndex = index.bamIndex }
+	call index { input: bamFile = bamFile, outputBamPath = outputBamPath }
+	call getReadLength { input: bamFile = bamFile, indexPath = index.indexedBam }
 
 	meta {
         author: "Ash O'Farrell"
