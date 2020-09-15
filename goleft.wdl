@@ -8,9 +8,9 @@ task index {
 		String outputBaiString = "${basename(inputBam)}.bai"
 	}
 
-	command {
-		samtools index ${inputBam} ${outputBaiString}
-	}
+	command <<<
+		samtools index ~{inputBam} ~{outputBaiString}
+	>>>
 
 	output {
 		File outputBai = outputBaiString
