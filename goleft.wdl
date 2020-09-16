@@ -5,10 +5,11 @@ version 1.0
 task index {
 	input {
 		File inputBam
-		String outputBaiString = "${basename(inputBam)}.bai"
+		String outputBaiString = "${inputBam}.bai"
 	}
 
 	command <<<
+		echo ~{outputBaiString}
 		samtools index ~{inputBam} ~{outputBaiString}
 	>>>
 
