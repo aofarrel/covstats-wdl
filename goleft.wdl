@@ -45,6 +45,12 @@ task getReadLength {
 			echo "Input bai file (~{inputBam}.bai) not found, panic"
 			exit 1
 		fi
+
+		# goleft tries to look for the bai in the same folder as the bam, but 
+		# they're never in the same folder when run via Cromwell, so we have
+		# to symlink it
+		inputBamDir=$(dirname ~{inputBam})
+		ln -s ~{inputBai} ~{inputBam}.bai
 		
 		goleft covstats ~{inputBam} >> this.txt
 		cat this.txt # this line is just for debugging
