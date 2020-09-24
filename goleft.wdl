@@ -24,7 +24,7 @@ task index {
 task getReadLength {
 	input {
 		File inputBam
-		File indexPath
+		File inputBai
 	}
 
 	command <<<
@@ -39,7 +39,7 @@ task getReadLength {
 		fi
 		
 		# Bai file is NEVER in the same directory as inputBam, trust me on this
-		if [ -f ~{indexPath} ]; then
+		if [ -f ~{inputBai} ]; then
 			echo "Input bai file exists"
 		else 
 			echo "Input bai file (~{inputBam}.bai) not found, panic"
@@ -69,7 +69,7 @@ workflow goleftwdl {
 	}
 
 	call index { input: inputBam = inputBam }
-	call getReadLength { input: inputBam = inputBam, indexPath = index.outputBai }
+	call getReadLength { input: inputBam = inputBam, inputBai = index.outputBai }
 
 	meta {
         author: "Ash O'Farrell"
