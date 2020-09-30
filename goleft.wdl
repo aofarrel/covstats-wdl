@@ -48,7 +48,8 @@ task getReadLength {
 
 		# goleft tries to look for the bai in the same folder as the bam, but 
 		# they're never in the same folder when run via Cromwell, so we have
-		# to symlink it
+		# to symlink it. goleft automatically checks for both name.bam.bai and
+		# name.bai so it's okay if we use either 
 		inputBamDir=$(dirname ~{inputBam})
 		ln -s ~{inputBai} ~{inputBam}.bai
 		
@@ -72,6 +73,12 @@ task indexcov {
 	input {
 		File inputBam
 		File inputBai
+		#Bool? IncludeGl
+		#String? ExcludePatt
+		#String? Sex
+		#String? Fai
+		#String[]? sex
+		#exclude
 	}
 
 	command <<<
@@ -93,17 +100,22 @@ task indexcov {
 			exit 1
 		fi
 
-		inputBamDir=$(dirname ~{inputBam})
-		inputBaiDir=$(dirname ~{inputBai})
 		mkdir indexDir
-		ln -s ~{inputBam} ~{indexDir}~{basename(inputBam)}
-		ln -s ~{inputBai} ~{indexDir}~{basename(inputBam)}.bai
+		ln -s ~{inputBam} indexDir~{basename(inputBam)}
+		ln -s ~{inputBai} indexDir~{basename(inputBam)}.bai
 
 		goleft indexcov --directory indexDir/ *.bam
 
 	>>>
 	output {
-		File readLength = "readLength"
+		File depthHTML = "indexDir/indexDir-indexcov-depth-20.html"
+		File depthPNG = "indexDir/indexDir-indexcov-depth-20.png"
+		File rocHTML = "indexDir/indexDir-indexcov-roc-20.html"
+		File rocPNG = "indexDir/indexDir-indexcov-roc-20.png"
+		File bed = "indexDir/indexDir-indexcov.bed.gz"
+		File ped = "indexDir/indexDir-indexcov.ped"
+		File roc = "indexDir/indexDir-indexcov.roc"
+		File html = "indexDir/index.html"
 	}
 	runtime {
         docker: "quay.io/biocontainers/goleft:0.2.0--0"
@@ -117,6 +129,7 @@ workflow goleftwdl {
 
 	call index { input: inputBam = inputBam }
 	call getReadLength { input: inputBam = inputBam, inputBai = index.outputBai }
+	call indexcov { input: inputBam = inputBam, inputBai = index.outputBai }
 
 	meta {
         author: "Ash O'Farrell"
