@@ -1,0 +1,7 @@
+{
+  "covstats.inputBamsOrCrams": [
+  "/Users/ash/Documents/aaa_test_files/crams_downsampled-1000genomes/NWD119836.0005.recab.cram",
+  "/Users/ash/Documents/aaa_test_files/crams_downsampled-1000genomes/NWD119836.chr1_10000000-11000000.recab.cram"
+ ],
+  "covstats.refGenome": "/Users/ash/Documents/aaa_test_files/aaa_cram_plus_reference/hs38DH.fa"
+}

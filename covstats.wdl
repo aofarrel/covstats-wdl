@@ -5,15 +5,15 @@ version 1.0
 task index {
 	input {
 		File inputBamOrCram
-		String outputBaiString
+		String outputIndexString
 	}
 
 	command {
-		samtools index ${inputBamOrCram} ${outputBaiString}
+		samtools index ${inputBamOrCram} ${outputIndexString}
 	}
 
 	output {
-		File outputBai = outputBaiString
+		File outputIndex = outputIndexString
 	}
 
 	runtime {
@@ -25,6 +25,7 @@ task getReadLength {
 	input {
 		File inputBamOrCram
 		File inputIndex
+		File? refGenome
 	}
 
 	command <<<
@@ -51,7 +52,7 @@ task getReadLength {
 		# to symlink it. goleft automatically checks for both name.bam.bai and
 		# name.bai so it's okay if we use either 
 		inputBamDir=$(dirname ~{inputBamOrCram})
-		ln -s ~{inputIndex} ~{inputBamOrCram}.bai
+		ln -s ~{inputIndex} ~{inputBamOrCram}.crai
 		
 		goleft covstats ~{inputBamOrCram} >> this.txt
 		COVOUT=$(head -2 this.txt | tail -1 this.txt)
@@ -59,10 +60,11 @@ task getReadLength {
 		echo ${COVARRAY[11]} >> readLength
 
 		# clean up
-		rm this.txt
+		#rm this.txt
 	>>>
 	output {
 		File readLength = "readLength"
+		File this = "debug"
 	}
 	runtime {
         docker: "quay.io/biocontainers/goleft:0.2.0--0"
@@ -76,18 +78,37 @@ workflow covstats {
 		File? refGenome # required if using crams
 	}
 
+	if(True) {
+		echo "true"
+	}
+
 	scatter(oneBamOrCram in inputBamsOrCrams) {
 		Array[File] batchInputAms = [oneBamOrCram]
-		String outputBaiString = "${basename(oneBamOrCram)}.bai"
-		call index { 
-			input:
-				inputBamOrCram = oneBamOrCram,
-				outputBaiString = outputBaiString
+		if($inputBamsOrCrams =~ \.cram$) {
+			echo "cram files"
+			String outputCraiString = "${basename(oneBamOrCram)}.crai"
+			call index { 
+				input:
+					inputBamOrCram = oneBamOrCram,
+					outputIndexString = outputCraiString
+			}
 		}
+
+		if($inputBamsOrCrams =~ \.bam$) {
+			echo "bam files"
+			String outputBaiString = "${basename(oneBamOrCram)}.bai"
+			call index { 
+				input:
+					inputBamOrCram = oneBamOrCram,
+					outputIndexString = outputBaiString
+			}
+		}
+
 		call getReadLength { 
 			input:
 				inputBamOrCram = oneBamOrCram,
-				inputIndex = index.outputBai
+				inputIndex = index.outputIndex,
+				refGenome = refGenome
 		}
 	}
 	
