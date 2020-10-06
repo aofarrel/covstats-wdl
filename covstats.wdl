@@ -55,16 +55,17 @@ task getReadLength {
 		ln -s ~{inputIndex} ~{inputBamOrCram}.bai
 		
 		goleft covstats ~{inputBamOrCram} >> this.txt
-		COVOUT = $(head -2 this.txt | tail -1 this.txt)
+		#COVOUT = $(head -2 this.txt | tail -1 this.txt) # previously worked???
+		COVOUT=$(tail -n +2 this.txt)
 		read -a COVARRAY <<< "$COVOUT"
-		echo ${COVARRAY[11]} >> readLength
+		echo ${COVARRAY[11]} >> readLength.txt
 
 		# clean up
-		#rm this.txt
+		rm this.txt
 	>>>
 	output {
-		File readLength = "readLength"
-		File this = "this.txt" # debugging purposes, will be removed later
+		File readLength = "readLength.txt"
+		#File this = "this.txt" # debugging purposes, will be removed later
 	}
 	runtime {
         docker: "quay.io/biocontainers/goleft:0.2.0--0"
@@ -77,7 +78,17 @@ task gather {
 	}
 
 	command <<<
-		echo ~{sep=' ' readLengthFiles} >> out.txt
+		for file in ~{sep=' ' readLengthFiles}
+		do
+			while read line; do
+				echo "${line}"
+				echo "${line}" >> out.txt
+			done < ${file}
+			#while IFS= read -r line
+			#do
+				#echo ${line}
+			#done
+		done
 	>>>
 
 	output {

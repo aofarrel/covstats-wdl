@@ -1,6 +1,8 @@
 
 Cromwell.stdout.txt
-empty.txt
 Cromwell.stderr.txt
 local.json
 .DS_Store
+empty.txt
+this.txt
+out.txt
