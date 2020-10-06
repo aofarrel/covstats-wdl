@@ -52,10 +52,11 @@ task getReadLength {
 		# to symlink it. goleft automatically checks for both name.bam.bai and
 		# name.bai so it's okay if we use either 
 		inputBamDir=$(dirname ~{inputBamOrCram})
-		ln -s ~{inputIndex} ~{inputBamOrCram}.crai
+		#ln -s ~{inputIndex} ~{inputBamOrCram}.crai
+		ln -s ~{inputIndex} ~{inputBamOrCram}.bai
 		
 		goleft covstats ~{inputBamOrCram} >> this.txt
-		COVOUT=$(head -2 this.txt | tail -1 this.txt)
+		COVOUT = $(head -2 this.txt | tail -1 this.txt)
 		read -a COVARRAY <<< "$COVOUT"
 		echo ${COVARRAY[11]} >> readLength
 
@@ -64,57 +65,82 @@ task getReadLength {
 	>>>
 	output {
 		File readLength = "readLength"
-		File this = "debug"
+		File this = "this.txt" # debugging purposes, will be removed later
 	}
 	runtime {
         docker: "quay.io/biocontainers/goleft:0.2.0--0"
     }
 }
 
+task gather {
+	input {
+		Array[File] readLengthFiles
+	}
+
+	command <<<
+
+		# based on lines 670-680 of topmed variant caller
+		readLengthFiles_string = ~{readLengthFiles
+		echo ~{readLengthFiles_string}
+
+
+		# this line throws a syntax error??????
+		#readLengthFiles_list = readLengthFiles_string.split()
+
+		#print("variantCalling: Input CRAM files names list is {}".format(readLengthFiles_list))
+		#for bam in readLengthFiles_list:
+			# Get the Cromwell basename  of the BAM file
+			# The worklow will be able to access them
+			# since the Cromwell path is mounted in the
+			# docker run commmand that Cromwell sets up
+			#base_name = os.path.basename(bam)
+	>>>
+}
+
 workflow covstats {
 	input {
 		Array[File] inputBamsOrCrams
 		Array[File]? inputIndexes
-		File? refGenome # required if using crams
+		File? refGenome # required if using crams... if crams can work at all
+
+		# debug attempt to implement crams, ignore
+		# because crams probably will never work
+		# without a source code edit
+		Boolean truedude = true
 	}
 
-	if(True) {
-		echo "true"
-	}
+	#if (truedude) {echo "true"}
 
 	scatter(oneBamOrCram in inputBamsOrCrams) {
 		Array[File] batchInputAms = [oneBamOrCram]
-		if($inputBamsOrCrams =~ \.cram$) {
-			echo "cram files"
-			String outputCraiString = "${basename(oneBamOrCram)}.crai"
-			call index { 
-				input:
-					inputBamOrCram = oneBamOrCram,
-					outputIndexString = outputCraiString
-			}
+		
+		#String outputCraiString = "${basename(oneBamOrCram)}.crai"
+		String outputBaiString = "${basename(oneBamOrCram)}.bai"
+		call index { 
+			input:
+				inputBamOrCram = oneBamOrCram,
+				outputIndexString = outputBaiString
+				#outputIndexString = outputCraiString
 		}
 
-		if($inputBamsOrCrams =~ \.bam$) {
-			echo "bam files"
-			String outputBaiString = "${basename(oneBamOrCram)}.bai"
-			call index { 
-				input:
-					inputBamOrCram = oneBamOrCram,
-					outputIndexString = outputBaiString
-			}
-		}
-
-		call getReadLength { 
+		call getReadLength as scatteredGetReadLength { 
 			input:
 				inputBamOrCram = oneBamOrCram,
 				inputIndex = index.outputIndex,
 				refGenome = refGenome
 		}
 	}
+
+	Array[File] readLengthFiles = scatteredGetReadLength.readLength
+
+	call gather {
+		input: readLengthFiles = readLengthFiles
+	}
 	
 	# assert refGenome is defined if using crams
 	#if [[ $inputBamsOrCrams =~ \.cram$ ]];
 
+	# skip calling index if the indeces are provided
 	#if inputIndexes
 	#then
 		#call getReadLength { input: inputBamsOrCrams = inputBamsOrCrams, inputIndexes = inputIndexes }
