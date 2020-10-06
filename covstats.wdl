@@ -21,7 +21,7 @@ task index {
     }
 }
 
-task getReadLength {
+task getReadLengthAndCoverage {
 	input {
 		File inputBamOrCram
 		File inputIndex
@@ -55,16 +55,20 @@ task getReadLength {
 		ln -s ~{inputIndex} ~{inputBamOrCram}.bai
 		
 		goleft covstats ~{inputBamOrCram} >> this.txt
-		#COVOUT = $(head -2 this.txt | tail -1 this.txt) # previously worked???
 		COVOUT=$(tail -n +2 this.txt)
 		read -a COVARRAY <<< "$COVOUT"
+		echo ${COVARRAY[1]} >> coverage.txt
 		echo ${COVARRAY[11]} >> readLength.txt
+
+		# NEED TO ADD A NEWLINE IN READLENGTH.TXT!!!!
+		# except in python version?? ugh!
 
 		# clean up
 		rm this.txt
 	>>>
 	output {
 		File readLength = "readLength.txt"
+		File coverage = "coverage.txt"
 		#File this = "this.txt" # debugging purposes, will be removed later
 	}
 	runtime {
@@ -75,20 +79,19 @@ task getReadLength {
 task gather {
 	input {
 		Array[File] readLengthFiles
+		Array[File] coverageFiles
 	}
 
 	command <<<
+		Array[String] allReadLengths
 		for file in ~{sep=' ' readLengthFiles}
 		do
 			while read line; do
-				echo "${line}"
-				echo "${line}" >> out.txt
+				echo "${line}" >> allReadLengths
 			done < ${file}
-			#while IFS= read -r line
-			#do
-				#echo ${line}
-			#done
 		done
+
+		echo ${allReadLengths} >> out.txt
 	>>>
 
 	output {
@@ -117,7 +120,7 @@ workflow covstats {
 				outputIndexString = outputBaiString
 		}
 
-		call getReadLength as scatteredGetReadLength { 
+		call getReadLengthAndCoverage as scatteredGetStats { 
 			input:
 				inputBamOrCram = oneBamOrCram,
 				inputIndex = index.outputIndex,
@@ -125,10 +128,13 @@ workflow covstats {
 		}
 	}
 
-	Array[File] readLengthFiles = scatteredGetReadLength.readLength
+	Array[File] readLengthFiles = scatteredGetStats.readLength
+	Array[File] coverageFiles = scatteredGetStats.coverage
 
 	call gather {
-		input: readLengthFiles = readLengthFiles
+		input:
+			readLengthFiles = readLengthFiles,
+			coverageFiles = coverageFiles
 	}
 
 	meta {

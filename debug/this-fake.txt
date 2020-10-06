@@ -1,0 +1,2 @@
+coverage	insert_mean	insert_sd	insert_5th	insert_95th	template_mean	template_sd	pct_unmapped	pct_bad_reads	pct_duplicate	pct_proper_pair	read_length	bam	sample
+0.49		103.63		75.68		0		311		189.56		86.86		10.93		14.7		14.7		54.9		101	/cromwell-executions/covstats/bac9b56a-6629-42c3-b1a3-d3baf996e66d/call-scatteredGetReadLength/shard-1/inputs/1765243637/NA12878.chrom21.ILLUMINA.bwa.CEU.high_coverage.20100311.bam	NA12878
