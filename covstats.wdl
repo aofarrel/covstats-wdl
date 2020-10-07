@@ -76,22 +76,43 @@ task getReadLengthAndCoverage {
     }
 }
 
-task gather {
+task pythonGather {
+	# is this cheating? a little bit.
 	input {
 		Array[File] readLengthFiles
 		Array[File] coverageFiles
+		File pythonParser
+	}
+	command <<<
+		echo ~{sep=' ' readLengthFiles} >> bug.txt
+		echo ~{sep=' ' coverageFiles} >> bug.txt
+		python "/Users/ash/Repos/goleft-wdl/debug/pythonParse.py" readLengthFiles
+	>>>
+
+}
+
+task gather {
+	input {
+		Array[File] readLengthFiles
+		Array[File] coverageFiles # currently unused
+		Array[String]? allReadLengths
 	}
 
 	command <<<
-		Array[String] allReadLengths
 		for file in ~{sep=' ' readLengthFiles}
 		do
-			while read line; do
-				echo "${line}" >> allReadLengths
+			while read line
+			do
+				echo "${line}" >> allReadLengths.txt
+				~{allReadLengths} += "${line}"
 			done < ${file}
 		done
 
-		echo ${allReadLengths} >> out.txt
+		for value in "${allReadLengths[@]}"
+		do
+			echo ${value} >> out.txt
+		done
+
 	>>>
 
 	output {
@@ -107,7 +128,7 @@ workflow covstats {
 		Array[File] inputBamsOrCrams
 		Array[File]? inputIndexes
 		File? refGenome # required if using crams... if crams can work at all
-
+		File pythonParser = "/Users/ash/Repos/goleft-wdl/debug/pythonParse.py"
 	}
 
 	scatter(oneBamOrCram in inputBamsOrCrams) {
@@ -136,6 +157,13 @@ workflow covstats {
 			readLengthFiles = readLengthFiles,
 			coverageFiles = coverageFiles
 	}
+
+	#call pythonGather {
+		#input:
+			#readLengthFiles = scatteredGetStats.readLength,
+			#coverageFiles = scatteredGetStats.coverage,
+			#pythonParser = pythonParser
+	#}
 
 	meta {
         author: "Ash O'Farrell"
