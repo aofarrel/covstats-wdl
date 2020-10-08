@@ -61,6 +61,13 @@ task getReadLengthAndCoverage {
 		read -a COVARRAY <<< "$COVOUT"
 		echo ${COVARRAY[1]} > thisCoverage
 		echo ${COVARRAY[11]} > thisReadLength
+		echo "'~{inputBamOrCram}'" >> filenames.txt
+		echo "'~{inputBamOrCram}'" > thisFilename
+
+		# there should be an alternative using write_lines()
+		# but so far I can't seem to get it to work, so
+		# for now we have to write filenames to a file
+		# then read said file... there has to be a better way!
 
 		# clean up
 		rm this.txt
@@ -68,6 +75,8 @@ task getReadLengthAndCoverage {
 	output {
 		Int outReadLength = read_int("thisReadLength")
 		Float outCoverage = read_float("thisCoverage")
+		File outFilenameFile = "filenames.txt"
+		String outFilenameString = read_lines("thisFilename")
 	}
 	runtime {
         docker: "quay.io/biocontainers/goleft:0.2.0--0"
@@ -78,10 +87,10 @@ task average {
 	input {
 		Array[Int] readLengths
 		Array[Float] coverages
-		Array[File] filenames
+		Array[String] filenames
 		Int lenReads = length(readLengths)
 		Int lenCov = length(coverages)
-		Int j = 1
+		Int j = 0
 	}
 
 	command <<<
@@ -90,17 +99,21 @@ task average {
 	# it seems impossible to sum over a WDL array in this scope so
 	# we essentially duplicate the contents of the WDL array variable
 	# into a variable created in the pythonic scope
-	pyReadLengths = [] 
-	pyCoverages = []
+	pyReadLengths = ~{sep="," readLengths} # array of ints
+	pyCoverages = ~{sep="," coverages} # array of floats
+	pyFilenames = []
+	for filenameFile in ["~{sep='"",""' filenames}"]:
+		fileIn = open("filenameFile", "r")
+		pyFilenames.append(f.read())
 
-	while ~{j} < ~{lenReads}+1:
-		print(~{j}) #debug
-		pyReadLengths.append(~{readLengths[j]})
-		pyCoverages.append(~{coverages[j]})
 
-		# print "table" with each inputs' read length and coverage
-		#print("~{filenames[j]} -->", ~{readLengths[j]}, ~{coverages[j]})
-		~{j} = ~{j}+1
+	j = 0 # yes, we have to do this twice, and I hate it
+
+	while j < ~{lenReads}:
+		print(pyFilenames[j], "-->", pyReadLengths[j], pyCoverages[j])
+		print(j) #debug
+		j = j+1
+		#~{j} = j
 
 	# print average read length
 	avgRL = sum(pyReadLengths) / ~{lenReads}
@@ -144,7 +157,7 @@ workflow covstats {
 		input:
 			readLengths = scatteredGetStats.outReadLength,
 			coverages = scatteredGetStats.outCoverage,
-			filenames = inputBamsOrCrams
+			filenames = scatteredGetStats.outFilename
 	}
 
 
