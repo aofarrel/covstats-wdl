@@ -3,6 +3,5 @@
   "/Users/ash/Documents/aaa_test_files/bam-1000genomes/NA12878.chrom20.ILLUMINA.bwa.CEU.low_coverage.20121211.bam",
   "/Users/ash/Documents/aaa_test_files/bam-1000genomes/NA12878.chrom21.ILLUMINA.bwa.CEU.high_coverage.20100311.bam"
  ],
-  "covstats.refGenome": "/Users/ash/Documents/aaa_test_files/aaa_cram_plus_reference/hs38DH.fa",
-  "covstats.pythonParser": "/Users/ash/Repos/goleft-wdl/debug/pythonParse.py"
+  "covstats.refGenome": "/Users/ash/Documents/aaa_test_files/aaa_cram_plus_reference/hs38DH.fa"
 }

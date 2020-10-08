@@ -26,6 +26,8 @@ task getReadLengthAndCoverage {
 		File inputBamOrCram
 		File inputIndex
 		File? refGenome
+		Float? thisCoverage
+		Int? thisReadLength
 	}
 
 	command <<<
@@ -57,70 +59,60 @@ task getReadLengthAndCoverage {
 		goleft covstats ~{inputBamOrCram} >> this.txt
 		COVOUT=$(tail -n +2 this.txt)
 		read -a COVARRAY <<< "$COVOUT"
-		echo ${COVARRAY[1]} >> coverage.txt
-		echo ${COVARRAY[11]} >> readLength.txt
-
-		# NEED TO ADD A NEWLINE IN READLENGTH.TXT!!!!
-		# except in python version?? ugh!
+		echo ${COVARRAY[1]} > thisCoverage
+		echo ${COVARRAY[11]} > thisReadLength
 
 		# clean up
 		rm this.txt
 	>>>
 	output {
-		File readLength = "readLength.txt"
-		File coverage = "coverage.txt"
-		#File this = "this.txt" # debugging purposes, will be removed later
+		Int outReadLength = read_int("thisReadLength")
+		Float outCoverage = read_float("thisCoverage")
 	}
 	runtime {
         docker: "quay.io/biocontainers/goleft:0.2.0--0"
     }
 }
 
-task pythonGather {
-	# is this cheating? a little bit.
+task average {
 	input {
-		Array[File] readLengthFiles
-		Array[File] coverageFiles
-		File pythonParser
-	}
-	command <<<
-		echo ~{sep=' ' readLengthFiles} >> bug.txt
-		echo ~{sep=' ' coverageFiles} >> bug.txt
-		python "/Users/ash/Repos/goleft-wdl/debug/pythonParse.py" readLengthFiles
-	>>>
-
-}
-
-task gather {
-	input {
-		Array[File] readLengthFiles
-		Array[File] coverageFiles # currently unused
-		Array[String]? allReadLengths
+		Array[Int] readLengths
+		Array[Float] coverages
+		Array[File] filenames
+		Int lenReads = length(readLengths)
+		Int lenCov = length(coverages)
+		Int j = 1
 	}
 
 	command <<<
-		for file in ~{sep=' ' readLengthFiles}
-		do
-			while read line
-			do
-				echo "${line}" >> allReadLengths.txt
-				~{allReadLengths} += "${line}"
-			done < ${file}
-		done
+	python << CODE
 
-		for value in "${allReadLengths[@]}"
-		do
-			echo ${value} >> out.txt
-		done
+	# it seems impossible to sum over a WDL array in this scope so
+	# we essentially duplicate the contents of the WDL array variable
+	# into a variable created in the pythonic scope
+	pyReadLengths = [] 
+	pyCoverages = []
 
+	while ~{j} < ~{lenReads}+1:
+		print(~{j}) #debug
+		pyReadLengths.append(~{readLengths[j]})
+		pyCoverages.append(~{coverages[j]})
+
+		# print "table" with each inputs' read length and coverage
+		#print("~{filenames[j]} -->", ~{readLengths[j]}, ~{coverages[j]})
+		~{j} = ~{j}+1
+
+	# print average read length
+	avgRL = sum(pyReadLengths) / ~{lenReads}
+	print("Average read length:", avgRL)
+	avgCv = sum(pyCoverages) / ~{lenCov}
+	print("Average read length:", avgCv)
+	CODE
 	>>>
 
 	output {
-		File out = "out.txt"
+		File out = read_lines(stdout())
 	}
-	runtime {
-        docker: "quay.io/biocontainers/goleft:0.2.0--0"
-    }
 }
 
 workflow covstats {
@@ -128,7 +120,6 @@ workflow covstats {
 		Array[File] inputBamsOrCrams
 		Array[File]? inputIndexes
 		File? refGenome # required if using crams... if crams can work at all
-		File pythonParser = "/Users/ash/Repos/goleft-wdl/debug/pythonParse.py"
 	}
 
 	scatter(oneBamOrCram in inputBamsOrCrams) {
@@ -149,21 +140,13 @@ workflow covstats {
 		}
 	}
 
-	Array[File] readLengthFiles = scatteredGetStats.readLength
-	Array[File] coverageFiles = scatteredGetStats.coverage
-
-	call gather {
+	call average {
 		input:
-			readLengthFiles = readLengthFiles,
-			coverageFiles = coverageFiles
+			readLengths = scatteredGetStats.outReadLength,
+			coverages = scatteredGetStats.outCoverage,
+			filenames = inputBamsOrCrams
 	}
 
-	#call pythonGather {
-		#input:
-			#readLengthFiles = scatteredGetStats.readLength,
-			#coverageFiles = scatteredGetStats.coverage,
-			#pythonParser = pythonParser
-	#}
 
 	meta {
         author: "Ash O'Farrell"
