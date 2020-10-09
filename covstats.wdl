@@ -114,7 +114,7 @@ task report {
 	input {
 		Array[Int] readLengths
 		Array[Float] coverages
-		Array[String] filenames
+		Array[File] filenames
 		Array[String] averages
 
 		# out of command section because WDL doesn't know what a comment is sometimes
@@ -133,16 +133,18 @@ task report {
 	}
 
 	command <<<
+    set -euxo pipefail
+    filenames_=${sep=' ' filenames}
+    readLengths=${sep=' ' readLengths}
 
-	filenames_=${sep=' ' filenames}
-	for i in ${!filenames_[*]}
-	do
-		filenamesBasename=$(basename ${filenames_[$i]})
-		echo ${filenamesBasename}
-	done
+    # add new columns corresponding to cell id
+    for i in ${!filenames_[*]}
+    do
+        filenames_basename=$(basename ${filenames_[$i]})
+        sed -i "s/$/\t${readLengths[$i]}\t${filenames_basename}/" ${filenames_[$i]}
+    done
 
-	echo ${filenames_}
-
+    cat ${sep=' ' filenames} > interval_read_counts.bed
 	>>>
 }
 
@@ -181,7 +183,7 @@ workflow covstats {
 		input:
 			readLengths = scatteredGetStats.outReadLength,
 			coverages = scatteredGetStats.outCoverage,
-			filenames = scatteredGetStats.outFilenames,
+			filenames = inputBamsOrCrams,
 			averages = average.averages
 	}
 
