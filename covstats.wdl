@@ -64,10 +64,10 @@ task getReadLengthAndCoverage {
 		echo ${COVARRAY[1]} > thisCoverage
 		echo ${COVARRAY[11]} > thisReadLength
 		BASHFILENAME=$(basename ~{inputBamOrCram})
-		echo ${BASHFILENAME} > thisFilename
+		echo "${BASHFILENAME}" > thisFilename
 
-		# clean up
-		rm this.txt
+		# put quotes around it somehow???
+
 	>>>
 	output {
 		Int outReadLength = read_int("thisReadLength")
@@ -114,7 +114,7 @@ task report {
 	input {
 		Array[Int] readLengths
 		Array[Float] coverages
-		Array[File] filenames
+		Array[String] filenames
 		Array[String] averages
 
 		# out of command section because WDL doesn't know what a comment is sometimes
@@ -133,18 +133,14 @@ task report {
 	}
 
 	command <<<
-    set -euxo pipefail
-    filenames_=${sep=' ' filenames}
-    readLengths=${sep=' ' readLengths}
+	python << CODE
 
-    # add new columns corresponding to cell id
-    for i in ${!filenames_[*]}
-    do
-        filenames_basename=$(basename ${filenames_[$i]})
-        sed -i "s/$/\t${readLengths[$i]}\t${filenames_basename}/" ${filenames_[$i]}
-    done
+	pyReadLengths = ~{sep="," readLengths} # array of ints
+	pyCoverages = ~{sep="," coverages} # array of floats
+	pyFilenames = ~{sep="," filenames}
 
-    cat ${sep=' ' filenames} > interval_read_counts.bed
+	CODE
+    
 	>>>
 }
 
@@ -183,7 +179,7 @@ workflow covstats {
 		input:
 			readLengths = scatteredGetStats.outReadLength,
 			coverages = scatteredGetStats.outCoverage,
-			filenames = inputBamsOrCrams,
+			filenames = scatteredGetStats.outFilenames,
 			averages = average.averages
 	}
 
