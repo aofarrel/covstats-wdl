@@ -26,11 +26,13 @@ task getReadLengthAndCoverage {
 		File inputBamOrCram
 		File inputIndex
 		File? refGenome
-		Float? thisCoverage
-		Int? thisReadLength
+		Float? thisCoverage # might be removable
+		Int? thisReadLength # might be removable
 	}
 
 	command <<<
+
+		#if defined(refGenome)
 
 		# For some reason, a panic in go doesn't exit with status 1, so we
 		# have to catch file not found exceptions ourselves
@@ -61,13 +63,8 @@ task getReadLengthAndCoverage {
 		read -a COVARRAY <<< "$COVOUT"
 		echo ${COVARRAY[1]} > thisCoverage
 		echo ${COVARRAY[11]} > thisReadLength
-		echo "'~{inputBamOrCram}'" >> filenames.txt
-		echo "'~{inputBamOrCram}'" > thisFilename
-
-		# there should be an alternative using write_lines()
-		# but so far I can't seem to get it to work, so
-		# for now we have to write filenames to a file
-		# then read said file... there has to be a better way!
+		BASHFILENAME=$(basename ~{inputBamOrCram})
+		echo ${BASHFILENAME} > thisFilename
 
 		# clean up
 		rm this.txt
@@ -75,8 +72,7 @@ task getReadLengthAndCoverage {
 	output {
 		Int outReadLength = read_int("thisReadLength")
 		Float outCoverage = read_float("thisCoverage")
-		File outFilenameFile = "filenames.txt"
-		String outFilenameString = read_lines("thisFilename")
+		String outFilenames = read_string("thisFilename")
 	}
 	runtime {
         docker: "quay.io/biocontainers/goleft:0.2.0--0"
@@ -87,7 +83,6 @@ task average {
 	input {
 		Array[Int] readLengths
 		Array[Float] coverages
-		Array[String] filenames
 		Int lenReads = length(readLengths)
 		Int lenCov = length(coverages)
 		Int j = 0
@@ -101,31 +96,54 @@ task average {
 	# into a variable created in the pythonic scope
 	pyReadLengths = ~{sep="," readLengths} # array of ints
 	pyCoverages = ~{sep="," coverages} # array of floats
-	pyFilenames = []
-	for filenameFile in ["~{sep='"",""' filenames}"]:
-		fileIn = open("filenameFile", "r")
-		pyFilenames.append(f.read())
-
-
-	j = 0 # yes, we have to do this twice, and I hate it
-
-	while j < ~{lenReads}:
-		print(pyFilenames[j], "-->", pyReadLengths[j], pyCoverages[j])
-		print(j) #debug
-		j = j+1
-		#~{j} = j
 
 	# print average read length
 	avgRL = sum(pyReadLengths) / ~{lenReads}
-	print("Average read length:", avgRL)
+	print("Average read length: {}".format(avgRL))
 	avgCv = sum(pyCoverages) / ~{lenCov}
-	print("Average read length:", avgCv)
+	print("Average coverage: {}".format(avgCv))
 	CODE
 	>>>
 
 	output {
-		File out = read_lines(stdout())
+		Array[String] averages = read_lines(stdout())
 	}
+}
+
+task report {
+	input {
+		Array[Int] readLengths
+		Array[Float] coverages
+		Array[String] filenames
+		Array[String] averages
+
+		# out of command section because WDL doesn't know what a comment is sometimes
+
+		# attempt 1, exactly as it is in the spec, syntax error during runtime
+		# Array[String] env = ["key1=value1", "key2=value2", "key3=value3"]
+		# Array[String] env_quoted = squote(env)
+
+		# attempts 2-6
+		# filenamesQuotedA=squote(filenames) # Unexpected token at runtime
+		# filenamesQuotedB=$(squote(filenames)) # NameError: name 'filenamesQuotedB' is not defined
+		# filenamesQuotedC=~{squote(filenames)} # unknown engine function squote at compile
+		# filenamesQuotedD=squote(~{filenames}) # array given but no sep provided at runtime
+		# filenamesQuotedE=$(squote(~{filenames})) # array given but no sep provided at runtime
+		# filenamesQuotedF=~{squote(~{filenames})} # syntax error at compile
+	}
+
+	command <<<
+
+	filenames_=${sep=' ' filenames}
+	for i in ${!filenames_[*]}
+	do
+		filenamesBasename=$(basename ${filenames_[$i]})
+		echo ${filenamesBasename}
+	done
+
+	echo ${filenames_}
+
+	>>>
 }
 
 workflow covstats {
@@ -156,8 +174,15 @@ workflow covstats {
 	call average {
 		input:
 			readLengths = scatteredGetStats.outReadLength,
+			coverages = scatteredGetStats.outCoverage
+	}
+
+	call report {
+		input:
+			readLengths = scatteredGetStats.outReadLength,
 			coverages = scatteredGetStats.outCoverage,
-			filenames = scatteredGetStats.outFilename
+			filenames = scatteredGetStats.outFilenames,
+			averages = average.averages
 	}
 
 
