@@ -24,7 +24,8 @@ task index {
 task getReadLengthAndCoverage {
 	input {
 		File inputBamOrCram
-		File inputIndex
+		File? inputIndex # if samtools index was called
+		Array[File]? allInputIndexes # if samtools index was not called
 		File? refGenome
 		Float? thisCoverage # might be removable
 		Int? thisReadLength # might be removable
@@ -93,7 +94,7 @@ task report {
 
 	pyReadLengths = ~{sep="," readLengths} # array of ints
 	pyCoverages = ~{sep="," coverages} # array of floats
-	pyFilenames = ~{sep="," filenames}
+	pyFilenames = ~{sep="," filenames} # array of strings, hopefully
 	i = 0
 
 	# print "table" with each inputs' read length and coverage
@@ -125,29 +126,63 @@ workflow covstats {
 		File? refGenome # required if using crams... if crams can work at all
 	}
 
-	scatter(oneBamOrCram in inputBamsOrCrams) {
-		Array[File] batchInputAms = [oneBamOrCram]
-		
-		String outputBaiString = "${basename(oneBamOrCram)}.bai"
-		call index { 
-			input:
-				inputBamOrCram = oneBamOrCram,
-				outputIndexString = outputBaiString
+	# weird workaround to see if inputIndexes are defined
+	Array[String] nada = []
+	Array[String] allIndexes = select_first([inputIndexes, nada])
+
+	if (length(allIndexes) != length(inputBamsOrCrams)) {
+		scatter(oneBamOrCram in inputBamsOrCrams) {
+			Array[File] batchInputAms = [oneBamOrCram]
+			String outputBaiString = "${basename(oneBamOrCram)}.bai"
+			
+			# scattered
+			call index { 
+				input:
+					inputBamOrCram = oneBamOrCram,
+					outputIndexString = outputBaiString
+			}
+
+			#scattered
+			call getReadLengthAndCoverage as scatteredGetStats { 
+				input:
+					inputBamOrCram = oneBamOrCram,
+					inputIndex = index.outputIndex,
+					refGenome = refGenome
+			}
 		}
 
-		call getReadLengthAndCoverage as scatteredGetStats { 
+		# not scattered, but needs to be in the same if block
+		# because otherwise the outputs of scatteredGetStats
+		# are considered optionals and Array[Int]? instead of
+		# Array[Int] and Cromwell doesn't like that
+		call report {
 			input:
-				inputBamOrCram = oneBamOrCram,
-				inputIndex = index.outputIndex,
-				refGenome = refGenome
+				readLengths = scatteredGetStats.outReadLength,
+				coverages = scatteredGetStats.outCoverage,
+				filenames = scatteredGetStats.outFilenames
 		}
 	}
 
-	call report {
-		input:
-			readLengths = scatteredGetStats.outReadLength,
-			coverages = scatteredGetStats.outCoverage,
-			filenames = scatteredGetStats.outFilenames
+	if (length(allIndexes) == length(inputBamsOrCrams)) {
+		scatter(oneBamOrCram in inputBamsOrCrams) {
+			Array[File] batchInputAms = [oneBamOrCram]
+
+			#scattered
+			call getReadLengthAndCoverage as scatteredGetStats { 
+				input:
+					inputBamOrCram = oneBamOrCram,
+					allInputIndexes = allIndexes,
+					refGenome = refGenome
+			}
+		}
+
+		# not scattered 
+		call report {
+			input:
+				readLengths = scatteredGetStats.outReadLength,
+				coverages = scatteredGetStats.outCoverage,
+				filenames = scatteredGetStats.outFilenames
+		}
 	}
 
 
