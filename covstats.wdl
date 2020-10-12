@@ -59,6 +59,7 @@ task getReadLengthAndCoverage {
 				echo "Input bai file exists, likely output of samtools index"
 			else
 				>&2 echo "Cursory search for the index file failed. Task may still succeed."
+				#WDL's sub() won't work because bam may appear in file name more than once
 				#echo "~{inputBamOrCram}" | sed 's/\.[^.]*$//'
 				#otherPossibility=$("~{inputBamOrCram}" | sed 's/\.[^.]*$//')
 				#if [-f ${otherPossibility}.bai]; then
@@ -75,7 +76,7 @@ task getReadLengthAndCoverage {
 		# to symlink it. goleft automatically checks for both name.bam.bai and
 		# name.bai so it's okay if we use either 
 		inputBamDir=$(dirname ~{inputBamOrCram})
-		ln -s ~{inputIndex} ~{inputBamOrCram}.bai
+		ln -s ~{inputIndex} ~{inputBamOrCram}.crai
 		
 		goleft covstats ~{inputBamOrCram} >> this.txt
 		COVOUT=$(tail -n +2 this.txt)
@@ -150,7 +151,7 @@ workflow covstats {
 
 	scatter(oneBamOrCram in inputBamsOrCrams) {
 		Array[File] batchInputAms = [oneBamOrCram]
-		String outputBaiString = "${basename(oneBamOrCram)}.bai"
+		String outputBaiString = "${basename(oneBamOrCram)}.crai"
 		
 		# scattered
 		if (length(allIndexes) != length(inputBamsOrCrams)) {
