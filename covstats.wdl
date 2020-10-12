@@ -64,9 +64,7 @@ task getReadLengthAndCoverage {
 		echo ${COVARRAY[1]} > thisCoverage
 		echo ${COVARRAY[11]} > thisReadLength
 		BASHFILENAME=$(basename ~{inputBamOrCram})
-		echo "${BASHFILENAME}" > thisFilename
-
-		# put quotes around it somehow???
+		echo "'${BASHFILENAME}'" > thisFilename
 
 	>>>
 	output {
@@ -79,69 +77,45 @@ task getReadLengthAndCoverage {
     }
 }
 
-task average {
-	input {
-		Array[Int] readLengths
-		Array[Float] coverages
-		Int lenReads = length(readLengths)
-		Int lenCov = length(coverages)
-		Int j = 0
-	}
-
-	command <<<
-	python << CODE
-
-	# it seems impossible to sum over a WDL array in this scope so
-	# we essentially duplicate the contents of the WDL array variable
-	# into a variable created in the pythonic scope
-	pyReadLengths = ~{sep="," readLengths} # array of ints
-	pyCoverages = ~{sep="," coverages} # array of floats
-
-	# print average read length
-	avgRL = sum(pyReadLengths) / ~{lenReads}
-	print("Average read length: {}".format(avgRL))
-	avgCv = sum(pyCoverages) / ~{lenCov}
-	print("Average coverage: {}".format(avgCv))
-	CODE
-	>>>
-
-	output {
-		Array[String] averages = read_lines(stdout())
-	}
-}
-
 task report {
 	input {
 		Array[Int] readLengths
 		Array[Float] coverages
 		Array[String] filenames
-		Array[String] averages
-
-		# out of command section because WDL doesn't know what a comment is sometimes
-
-		# attempt 1, exactly as it is in the spec, syntax error during runtime
-		# Array[String] env = ["key1=value1", "key2=value2", "key3=value3"]
-		# Array[String] env_quoted = squote(env)
-
-		# attempts 2-6
-		# filenamesQuotedA=squote(filenames) # Unexpected token at runtime
-		# filenamesQuotedB=$(squote(filenames)) # NameError: name 'filenamesQuotedB' is not defined
-		# filenamesQuotedC=~{squote(filenames)} # unknown engine function squote at compile
-		# filenamesQuotedD=squote(~{filenames}) # array given but no sep provided at runtime
-		# filenamesQuotedE=$(squote(~{filenames})) # array given but no sep provided at runtime
-		# filenamesQuotedF=~{squote(~{filenames})} # syntax error at compile
+		Int lenReads = length(readLengths)
+		Int lenCov = length(coverages)
 	}
 
 	command <<<
 	python << CODE
 
+	f = open("reports.txt", "a")
+
 	pyReadLengths = ~{sep="," readLengths} # array of ints
 	pyCoverages = ~{sep="," coverages} # array of floats
 	pyFilenames = ~{sep="," filenames}
+	i = 0
+
+	# print "table" with each inputs' read length and coverage
+	f.write("Filename\tRead length\tCoverage\n")
+	while i < len(pyReadLengths):
+		f.write("{}\t{}\t{}\n".format(pyFilenames[i], pyReadLengths[i], pyCoverages[i]))
+		i += 1
+
+	# print average read length
+	avgRL = sum(pyReadLengths) / ~{lenReads}
+	f.write("Average read length: {}\n".format(avgRL))
+	avgCv = sum(pyCoverages) / ~{lenCov}
+	f.write("Average coverage: {}\n".format(avgCv))
+
+	f.close()
 
 	CODE
-    
 	>>>
+
+	output {
+		File finalOut = "reports.txt"
+	}
 }
 
 workflow covstats {
@@ -169,18 +143,11 @@ workflow covstats {
 		}
 	}
 
-	call average {
-		input:
-			readLengths = scatteredGetStats.outReadLength,
-			coverages = scatteredGetStats.outCoverage
-	}
-
 	call report {
 		input:
 			readLengths = scatteredGetStats.outReadLength,
 			coverages = scatteredGetStats.outCoverage,
-			filenames = scatteredGetStats.outFilenames,
-			averages = average.averages
+			filenames = scatteredGetStats.outFilenames
 	}
 
 
