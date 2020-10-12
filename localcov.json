@@ -5,6 +5,5 @@
  ],
   "covstats.inputIndexes": [
     "/Users/ash/Documents/aaa_test_files/bam-1000genomes/NA12878.chrom20.ILLUMINA.bwa.CEU.low_coverage.20121211.bam.bai",
-    "/Users/ash/Documents/aaa_test_files/bam-1000genomes/NA12878.chrom21.ILLUMINA.bwa.CEU.high_coverage.20100311.bam.bai"],
-  "covstats.refGenome": "/Users/ash/Documents/aaa_test_files/aaa_cram_plus_reference/hs38DH.fa"
+    "/Users/ash/Documents/aaa_test_files/bam-1000genomes/NA12878.chrom21.ILLUMINA.bwa.CEU.high_coverage.20100311.bam.bai"]
 }
