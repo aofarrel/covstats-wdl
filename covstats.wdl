@@ -29,10 +29,7 @@ task getReadLengthAndCoverage {
 
 	command <<<
 
-		# For some reason, Cromwell handles panics in go TOO well.
-		# In other words, a panic (fatal error) in go is perfectly
-		# capable of reporting as a successful task/workflow run.
-		# Unfortunately this means we need to catch them ourselves.
+		set -eux -o pipefail
 
 		if [ -f ~{inputBamOrCram} ]; then
 			echo "Input bam file exists"
