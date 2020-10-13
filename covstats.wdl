@@ -1,7 +1,5 @@
 version 1.0
 
-# Currently assumes only one bam is the input
-
 task index {
 	input {
 		File inputBamOrCram
@@ -27,16 +25,15 @@ task getReadLengthAndCoverage {
 		File? inputIndex # if samtools index was called
 		Array[File] allInputIndexes # if samtools index was not called
 		File? refGenome
-		Float? thisCoverage # might be removable
-		Int? thisReadLength # might be removable
 	}
 
 	command <<<
 
-		#if defined(refGenome)
+		# For some reason, Cromwell handles panics in go TOO well.
+		# In other words, a panic (fatal error) in go is perfectly
+		# capable of reporting as a successful task/workflow run.
+		# Unfortunately this means we need to catch them ourselves.
 
-		# For some reason, a panic in go doesn't exit with status 1, so we
-		# have to catch file not found exceptions ourselves
 		if [ -f ~{inputBamOrCram} ]; then
 			echo "Input bam file exists"
 		else 
@@ -51,11 +48,9 @@ task getReadLengthAndCoverage {
 		# foo.bai instead of foo.bam.bai" so for now failing both does not exit 1
 
 		if [ -f ~{inputBamOrCram}.bai ]; then
-			# User-defined input exists
 			echo "Input bai file exists, likely passed in by user"
 		else
 			if [ -f ~{inputIndex} ]; then
-				# samtools index's output exists
 				echo "Input bai file exists, likely output of samtools index"
 			else
 				>&2 echo "Cursory search for the index file failed. Task may still succeed."
@@ -72,9 +67,9 @@ task getReadLengthAndCoverage {
 		fi
 
 		# goleft tries to look for the bai in the same folder as the bam, but 
-		# they're never in the same folder when run via Cromwell, so we have
-		# to symlink it. goleft automatically checks for both name.bam.bai and
-		# name.bai so it's okay if we use either 
+		# they're not in the same folder if the input came from samtools index,
+		# so we have to symlink it. goleft automatically checks for both 
+		# foo.bam.bai and foo.bai, so it's okay if we use either 
 		inputBamDir=$(dirname ~{inputBamOrCram})
 		ln -s ~{inputIndex} ~{inputBamOrCram}.crai
 		
@@ -113,7 +108,7 @@ task report {
 
 	pyReadLengths = ~{sep="," readLengths} # array of ints
 	pyCoverages = ~{sep="," coverages} # array of floats
-	pyFilenames = ~{sep="," filenames} # array of strings, hopefully
+	pyFilenames = ~{sep="," filenames} # array of strings
 	i = 0
 
 	# print "table" with each inputs' read length and coverage
@@ -142,7 +137,6 @@ workflow covstats {
 	input {
 		Array[File] inputBamsOrCrams
 		Array[File]? inputIndexes
-		File? refGenome # required if using crams... if crams can work at all
 	}
 
 	# weird workaround to see if inputIndexes are defined
@@ -181,7 +175,6 @@ workflow covstats {
 		call getReadLengthAndCoverage as scatteredGetStats { 
 			input:
 				inputBamOrCram = oneBamOrCram,
-				refGenome = refGenome,
 				# Let me explain this foolishness...
 				# samtools index takes time so we want to skip it whenever
 				# possible. If the user does not supply indexes for every
