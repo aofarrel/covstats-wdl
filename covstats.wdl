@@ -41,37 +41,31 @@ task getReadLengthAndCoverage {
 			exit 1
 		fi
 		
-		# If the user passes in the indeces, they will be in the same input folder
-		# as the input bams and crams. If samtools index was called to generate the
-		# indeces, then they will be in a different folder, hence the need for two
-		# checks. Unfortunately neither cover the "user defined an input that is like
-		# foo.bai instead of foo.bam.bai" so for now failing both does not exit 1
+		# If the user passes in the indices, they will be in the same folder
+		# as the input bams/crams. If samtools index was called to generate
+		# the indices, then they will be in a different folder.
+
+		OTHERPOSSIBILITY=$(echo ~{inputBamOrCram} | sed 's/\.[^.]*$//')
 
 		if [ -f ~{inputBamOrCram}.bai ]; then
-			echo "Input bai file exists, likely passed in by user"
+			# foo.bam.bai
+			echo "Bai file, likely passed in by user, exists with pattern *.bam.bai"
+		elif [ ~{inputIndex} != ~{inputBamOrCram} ]; then
+			# foo.bam.bai
+			echo "Bai file, likely output of samtools index, exists"
+			# goleft tries to look for the bai in the same folder as the bam, but 
+			# they're not in the same folder if the input came from samtools index,
+			# so we have to symlink it. goleft automatically checks for both 
+			# foo.bam.bai and foo.bai, so it's okay if we use either 
+			inputBamDir=$(dirname ~{inputBamOrCram})
+			ln -s ~{inputIndex} ~{inputBamOrCram}.bai
+		elif [ -f ${OTHERPOSSIBILITY}.bai ]; then
+			# foo.bai
+			echo "Bai file, likely passed in by user, exists with pattern *.bai"
 		else
-			if [ -f ~{inputIndex} ]; then
-				echo "Input bai file exists, likely output of samtools index"
-			else
-				>&2 echo "Cursory search for the index file failed. Task may still succeed."
-				#WDL's sub() won't work because bam may appear in file name more than once
-				#echo "~{inputBamOrCram}" | sed 's/\.[^.]*$//'
-				#otherPossibility=$("~{inputBamOrCram}" | sed 's/\.[^.]*$//')
-				#if [-f ${otherPossibility}.bai]; then
-					#echo "Input has been found"
-				#else
-					#>&2 echo "Input bai file (~{inputBamOrCram}.bai) nor ${otherPossibility}.bai not found, panic"
-					#exit 1
-				#fi
-			fi
+			>&2 echo "Input bai file (~{inputBamOrCram}.bai) nor ${OTHERPOSSIBILITY}.bai not found, panic"
+			exit 1
 		fi
-
-		# goleft tries to look for the bai in the same folder as the bam, but 
-		# they're not in the same folder if the input came from samtools index,
-		# so we have to symlink it. goleft automatically checks for both 
-		# foo.bam.bai and foo.bai, so it's okay if we use either 
-		inputBamDir=$(dirname ~{inputBamOrCram})
-		ln -s ~{inputIndex} ~{inputBamOrCram}.crai
 		
 		goleft covstats ~{inputBamOrCram} >> this.txt
 		COVOUT=$(tail -n +2 this.txt)
