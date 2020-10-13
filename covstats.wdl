@@ -41,27 +41,25 @@ task getReadLengthAndCoverage {
 			exit 1
 		fi
 		
-		# If the user passes in the indeces, they will be in the same input folder
-		# as the input bams and crams. If samtools index was called to generate the
-		# indeces, then they will be in a different folder, hence the need for two
-		# checks. Unfortunately neither cover the "user defined an input that is like
-		# foo.bai instead of foo.bam.bai" so for now failing both does not exit 1
+		# If the user passes in the indeces, they will be in the same folder
+		# as the input bams/crams. If samtools index was called to generate
+		# the indeces, then they will be in a different folder.
+
+		OTHERPOSSIBILITY=$(echo ~{inputBamOrCram} | sed 's/\.[^.]*$//')
+		echo "${OTHERPOSSIBILITY}.bai"
 
 		if [ -f ~{inputBamOrCram}.bai ]; then
-			echo "Input bai file exists, likely passed in by user"
+			echo "Bai file, likely passed in by user, exists with pattern *.bam.bai"
 		else
-			if [ -f ~{inputIndex} ]; then
-				echo "Input bai file exists, likely output of samtools index"
+			if [ ~{inputIndex} != ~{inputBamOrCram} ]; then
+				echo "Bai file, likely output of samtools index, exists with pattern *.bam.bai"
 			else
-				>&2 echo "Cursory search for the index file failed. Task may still succeed."
-				#echo "~{inputBamOrCram}" | sed 's/\.[^.]*$//'
-				#otherPossibility=$("~{inputBamOrCram}" | sed 's/\.[^.]*$//')
-				#if [-f ${otherPossibility}.bai]; then
-					#echo "Input has been found"
-				#else
-					#>&2 echo "Input bai file (~{inputBamOrCram}.bai) nor ${otherPossibility}.bai not found, panic"
-					#exit 1
-				#fi
+				if [ -f ${OTHERPOSSIBILITY}.bai ]; then
+					echo "Bai file, likely passed in by user, exists with pattern *.bai"
+				else
+					>&2 echo "Input bai file (~{inputBamOrCram}.bai) nor ${otherPossibility}.bai not found, panic"
+					exit 1
+				fi
 			fi
 		fi
 
