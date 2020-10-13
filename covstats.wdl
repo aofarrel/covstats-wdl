@@ -41,34 +41,31 @@ task getReadLengthAndCoverage {
 			exit 1
 		fi
 		
-		# If the user passes in the indeces, they will be in the same folder
+		# If the user passes in the indices, they will be in the same folder
 		# as the input bams/crams. If samtools index was called to generate
-		# the indeces, then they will be in a different folder.
+		# the indices, then they will be in a different folder.
 
 		OTHERPOSSIBILITY=$(echo ~{inputBamOrCram} | sed 's/\.[^.]*$//')
-		echo "${OTHERPOSSIBILITY}.bai"
 
 		if [ -f ~{inputBamOrCram}.bai ]; then
+			# foo.bam.bai
 			echo "Bai file, likely passed in by user, exists with pattern *.bam.bai"
+		elif [ ~{inputIndex} != ~{inputBamOrCram} ]; then
+			# foo.bam.bai
+			echo "Bai file, likely output of samtools index, exists"
+			# goleft tries to look for the bai in the same folder as the bam, but 
+			# they're not in the same folder if the input came from samtools index,
+			# so we have to symlink it. goleft automatically checks for both 
+			# foo.bam.bai and foo.bai, so it's okay if we use either 
+			inputBamDir=$(dirname ~{inputBamOrCram})
+			ln -s ~{inputIndex} ~{inputBamOrCram}.bai
+		elif [ -f ${OTHERPOSSIBILITY}.bai ]; then
+			# foo.bai
+			echo "Bai file, likely passed in by user, exists with pattern *.bai"
 		else
-			if [ ~{inputIndex} != ~{inputBamOrCram} ]; then
-				echo "Bai file, likely output of samtools index, exists with pattern *.bam.bai"
-			else
-				if [ -f ${OTHERPOSSIBILITY}.bai ]; then
-					echo "Bai file, likely passed in by user, exists with pattern *.bai"
-				else
-					>&2 echo "Input bai file (~{inputBamOrCram}.bai) nor ${otherPossibility}.bai not found, panic"
-					exit 1
-				fi
-			fi
+			>&2 echo "Input bai file (~{inputBamOrCram}.bai) nor ${OTHERPOSSIBILITY}.bai not found, panic"
+			exit 1
 		fi
-
-		# goleft tries to look for the bai in the same folder as the bam, but 
-		# they're not in the same folder if the input came from samtools index,
-		# so we have to symlink it. goleft automatically checks for both 
-		# foo.bam.bai and foo.bai, so it's okay if we use either 
-		inputBamDir=$(dirname ~{inputBamOrCram})
-		ln -s ~{inputIndex} ~{inputBamOrCram}.bai
 		
 		goleft covstats ~{inputBamOrCram} >> this.txt
 		COVOUT=$(tail -n +2 this.txt)
