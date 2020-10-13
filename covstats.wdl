@@ -22,12 +22,15 @@ task index {
 task getReadLengthAndCoverage {
 	input {
 		File inputBamOrCram
+		Boolean? isThisACram
 		File? inputIndex # if samtools index was called
 		Array[File] allInputIndexes # if samtools index was not called
 		File? refGenome
 	}
 
 	command <<<
+
+		if 
 
 		# For some reason, Cromwell handles panics in go TOO well.
 		# In other words, a panic (fatal error) in go is perfectly
@@ -64,10 +67,10 @@ task getReadLengthAndCoverage {
 			echo "Bai file, likely passed in by user, exists with pattern *.bai"
 		else
 			>&2 echo "Input bai file (~{inputBamOrCram}.bai) nor ${OTHERPOSSIBILITY}.bai not found, panic"
-			exit 1
+			#exit 1
 		fi
 		
-		goleft covstats ~{inputBamOrCram} >> this.txt
+		goleft covstats -f ~{refGenome} ~{inputBamOrCram} >> this.txt
 		COVOUT=$(tail -n +2 this.txt)
 		read -a COVARRAY <<< "$COVOUT"
 		echo ${COVARRAY[1]} > thisCoverage
@@ -131,18 +134,37 @@ workflow covstats {
 	input {
 		Array[File] inputBamsOrCrams
 		Array[File]? inputIndexes
+		File? refGenome
 	}
 
-	# weird workaround to see if inputIndexes are defined
+	# weird workaround to see if inputIndexes are defined, but only for bam files
 	Array[String] wholeLottaNada = []
-	Array[String] allIndexes = select_first([inputIndexes, wholeLottaNada])
 
 	scatter(oneBamOrCram in inputBamsOrCrams) {
 		Array[File] batchInputAms = [oneBamOrCram]
-		String outputBaiString = "${basename(oneBamOrCram)}.crai"
+
+		# prepare for the worst workaround you have ever seen.
+		Array[String] allIndexes = select_first([inputIndexes, wholeLottaNada])
+		String base = "${basename(oneBamOrCram)}"
+		String cramReplaced = sub(base, "\\.cram", "pneumonoultramicroscopicsilicovolcanoconiosis")
+		Boolean thisIsACram = false
+		if (base == cramReplaced) {
+			# Input is a cram file, so we want to
+			# (1) assert the user provided a reference genome
+			# (2) skip indexing
+
+			# ASSERT REF GENOME
+
+			# to prevent indexing from being called in the next if statement,
+			# we mess up the length of allIndexes. because allIndexes is reset
+			# for every input file, this should allow for a mix of cram and bam
+			# file inputs and allow samtools index to run at any given time
+			Boolean thisIsACram = true
+		}
 		
 		# scattered
 		if (length(allIndexes) != length(inputBamsOrCrams)) {
+			String outputBaiString = "${basename(oneBamOrCram)}.bai"
 			# Some possible snags
 			# (1) Neither bam/crams nor indeces defined
 			# (2) Same number of files in each array but they don't
@@ -158,17 +180,20 @@ workflow covstats {
 			# range but won't error until every bam/cram has been
 			# processed and that reported error on the cli will be
 			# bad output
-			call index { 
+			#if (!thisIsACram) {
+				call index { 
 				input:
 					inputBamOrCram = oneBamOrCram,
 					outputIndexString = outputBaiString
-			}
+				}
+			#}
 		}
 
 		#scattered
 		call getReadLengthAndCoverage as scatteredGetStats { 
 			input:
 				inputBamOrCram = oneBamOrCram,
+				isThisACram = thisIsACram,
 				# Let me explain this foolishness...
 				# samtools index takes time so we want to skip it whenever
 				# possible. If the user does not supply indexes for every
