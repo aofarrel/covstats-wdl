@@ -22,7 +22,6 @@ task index {
 task getReadLengthAndCoverage {
 	input {
 		File inputBamOrCram
-		Boolean? isThisACram
 		File? inputIndex # if samtools index was called
 		Array[File] allInputIndexes # if samtools index was not called
 		File? refGenome
@@ -30,53 +29,64 @@ task getReadLengthAndCoverage {
 
 	command <<<
 
-		if 
-
-		# For some reason, Cromwell handles panics in go TOO well.
-		# In other words, a panic (fatal error) in go is perfectly
-		# capable of reporting as a successful task/workflow run.
-		# Unfortunately this means we need to catch them ourselves.
+		set -eux -o pipefail
 
 		if [ -f ~{inputBamOrCram} ]; then
-			echo "Input bam file exists"
+				echo "Input bam or cram file exists"
 		else 
-			>&2 echo "Input bam file (~{inputBamOrCram}) not found, panic"
-			exit 1
+				>&2 echo "Input bam or cram file (~{inputBamOrCram}) not found, panic"
+				exit 1
 		fi
+
+		AMIACRAM=$(echo ~{inputBamOrCram} | sed 's/\.[^.]*$//')
+
+		if [ -f ${AMIACRAM}.cram ]; then
+			echo "Cram file detected"
+			goleft covstats -f ~{refGenome} ~{inputBamOrCram} >> this.txt
+			COVOUT=$(tail -n +2 this.txt)
+			read -a COVARRAY <<< "$COVOUT"
+			echo ${COVARRAY[1]} > thisCoverage
+			echo ${COVARRAY[11]} > thisReadLength
+			BASHFILENAME=$(basename ~{inputBamOrCram})
+			echo "'${BASHFILENAME}'" > thisFilename
 		
-		# If the user passes in the indices, they will be in the same folder
-		# as the input bams/crams. If samtools index was called to generate
-		# the indices, then they will be in a different folder.
-
-		OTHERPOSSIBILITY=$(echo ~{inputBamOrCram} | sed 's/\.[^.]*$//')
-
-		if [ -f ~{inputBamOrCram}.bai ]; then
-			# foo.bam.bai
-			echo "Bai file, likely passed in by user, exists with pattern *.bam.bai"
-		elif [ ~{inputIndex} != ~{inputBamOrCram} ]; then
-			# foo.bam.bai
-			echo "Bai file, likely output of samtools index, exists"
-			# goleft tries to look for the bai in the same folder as the bam, but 
-			# they're not in the same folder if the input came from samtools index,
-			# so we have to symlink it. goleft automatically checks for both 
-			# foo.bam.bai and foo.bai, so it's okay if we use either 
-			inputBamDir=$(dirname ~{inputBamOrCram})
-			ln -s ~{inputIndex} ~{inputBamOrCram}.bai
-		elif [ -f ${OTHERPOSSIBILITY}.bai ]; then
-			# foo.bai
-			echo "Bai file, likely passed in by user, exists with pattern *.bai"
 		else
-			>&2 echo "Input bai file (~{inputBamOrCram}.bai) nor ${OTHERPOSSIBILITY}.bai not found, panic"
-			#exit 1
+			# Not a cram file
+			
+			# If the user passes in the indices, they will be in the same folder
+			# as the input bams/crams. If samtools index was called to generate
+			# the indices, then they will be in a different folder.
+
+			OTHERPOSSIBILITY=$(echo ~{inputBamOrCram} | sed 's/\.[^.]*$//')
+
+			if [ -f ~{inputBamOrCram}.bai ]; then
+				# foo.bam.bai
+				echo "Bai file, likely passed in by user, exists with pattern *.bam.bai"
+			elif [ ~{inputIndex} != ~{inputBamOrCram} ]; then
+				# foo.bam.bai
+				echo "Bai file, likely output of samtools index, exists"
+				# goleft tries to look for the bai in the same folder as the bam, but 
+				# they're not in the same folder if the input came from samtools index,
+				# so we have to symlink it. goleft automatically checks for both 
+				# foo.bam.bai and foo.bai, so it's okay if we use either 
+				inputBamDir=$(dirname ~{inputBamOrCram})
+				ln -s ~{inputIndex} ~{inputBamOrCram}.bai
+			elif [ -f ${OTHERPOSSIBILITY}.bai ]; then
+				# foo.bai
+				echo "Bai file, likely passed in by user, exists with pattern *.bai"
+			else
+				>&2 echo "Input bai file (~{inputBamOrCram}.bai) nor ${OTHERPOSSIBILITY}.bai not found, panic"
+				#exit 1
+			fi
+			
+			goleft covstats -f ~{refGenome} ~{inputBamOrCram} >> this.txt
+			COVOUT=$(tail -n +2 this.txt)
+			read -a COVARRAY <<< "$COVOUT"
+			echo ${COVARRAY[1]} > thisCoverage
+			echo ${COVARRAY[11]} > thisReadLength
+			BASHFILENAME=$(basename ~{inputBamOrCram})
+			echo "'${BASHFILENAME}'" > thisFilename
 		fi
-		
-		goleft covstats -f ~{refGenome} ~{inputBamOrCram} >> this.txt
-		COVOUT=$(tail -n +2 this.txt)
-		read -a COVARRAY <<< "$COVOUT"
-		echo ${COVARRAY[1]} > thisCoverage
-		echo ${COVARRAY[11]} > thisReadLength
-		BASHFILENAME=$(basename ~{inputBamOrCram})
-		echo "'${BASHFILENAME}'" > thisFilename
 
 	>>>
 	output {
@@ -130,6 +140,26 @@ task report {
 	}
 }
 
+task crash {
+	input {
+		String errorCode
+		#Int crashMe = 99999999
+		#Int crashMePlease = 99999999
+		#Int noRefGenomeCrash = crashMe * crashMePlease
+	}
+	command <<<
+
+	set -eux -o pipefail
+	echo "this is not an integer" >> nothing.txt
+	echo "~{errorCode}"
+	exit("~{errorCode}")
+
+	>>>
+	output {
+		Int badOutput = read_string("nothing.txt")
+	}
+}
+
 workflow covstats {
 	input {
 		Array[File] inputBamsOrCrams
@@ -147,20 +177,26 @@ workflow covstats {
 		Array[String] allIndexes = select_first([inputIndexes, wholeLottaNada])
 		String base = "${basename(oneBamOrCram)}"
 		String cramReplaced = sub(base, "\\.cram", "pneumonoultramicroscopicsilicovolcanoconiosis")
-		Boolean thisIsACram = false
-		if (base == cramReplaced) {
-			# Input is a cram file, so we want to
-			# (1) assert the user provided a reference genome
-			# (2) skip indexing
 
-			# ASSERT REF GENOME
-
-			# to prevent indexing from being called in the next if statement,
-			# we mess up the length of allIndexes. because allIndexes is reset
-			# for every input file, this should allow for a mix of cram and bam
-			# file inputs and allow samtools index to run at any given time
-			Boolean thisIsACram = true
+		if (base != cramReplaced) {
+			# Input is a cram file, so we want to assert the user provided a reference genome
+			call crash {
+				input:
+					errorCode = "Cram file input detected but ref genome is missing"
+			}
 		}
+
+		# not firing
+		if (!defined(refGenome)) {
+			#Int crashMe = 99999999
+			#Int crashMePlease = 99999999
+			#Int noRefGenomeCrash = crashMe * crashMePlease
+		}
+
+		# this does fire and does crash
+		#Int crashMe = 99999999
+		#Int crashMePlease = 99999999
+		#Int noRefGenomeCrash = crashMe * crashMePlease
 		
 		# scattered
 		if (length(allIndexes) != length(inputBamsOrCrams)) {
@@ -180,20 +216,21 @@ workflow covstats {
 			# range but won't error until every bam/cram has been
 			# processed and that reported error on the cli will be
 			# bad output
-			#if (!thisIsACram) {
-				call index { 
-				input:
-					inputBamOrCram = oneBamOrCram,
-					outputIndexString = outputBaiString
+			if (base == cramReplaced) {
+				# Only true if we are running on a bam
+				call index {
+					input:
+						inputBamOrCram = oneBamOrCram,
+						outputIndexString = outputBaiString
 				}
-			#}
+			}
 		}
 
 		#scattered
 		call getReadLengthAndCoverage as scatteredGetStats { 
 			input:
 				inputBamOrCram = oneBamOrCram,
-				isThisACram = thisIsACram,
+				refGenome = refGenome,
 				# Let me explain this foolishness...
 				# samtools index takes time so we want to skip it whenever
 				# possible. If the user does not supply indexes for every
