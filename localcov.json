@@ -1,6 +1,7 @@
 {
   "covstats.inputBamsOrCrams": [
-    "/Users/ash/Documents/aaa_test_files/aaa_cram_plus_reference/NWD119836.0005.recab.cram"
+    "/Users/ash/Documents/aaa_test_files/aaa_cram_plus_reference/NWD119836.0005.recab.cram",
+    "/Users/ash/Documents/aaa_test_files/bam-1000genomes/NA12878.chrom19.ILLUMINA.bwa.CEU.high_coverage.20100311.bam"
  ],
   "covstats.refGenome": "/Users/ash/Documents/aaa_test_files/aaa_cram_plus_reference/hs38DH.fa"
 }
