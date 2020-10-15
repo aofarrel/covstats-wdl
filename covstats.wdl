@@ -42,13 +42,21 @@ task getReadLengthAndCoverage {
 
 		if [ -f ${AMIACRAM}.cram ]; then
 			echo "Cram file detected"
-			goleft covstats -f ~{refGenome} ~{inputBamOrCram} >> this.txt
-			COVOUT=$(tail -n +2 this.txt)
-			read -a COVARRAY <<< "$COVOUT"
-			echo ${COVARRAY[1]} > thisCoverage
-			echo ${COVARRAY[11]} > thisReadLength
-			BASHFILENAME=$(basename ~{inputBamOrCram})
-			echo "'${BASHFILENAME}'" > thisFilename
+			if [ "~{refGenome}" != '' ]; then
+				goleft covstats -f ~{refGenome} ~{inputBamOrCram} >> this.txt
+				# Sometimes this.txt seems to be missing the header... investigate
+				COVOUT=$(tail -n +2 this.txt)
+				read -a COVARRAY <<< "$COVOUT"
+				echo ${COVARRAY[1]} > thisCoverage
+				echo ${COVARRAY[11]} > thisReadLength
+				BASHFILENAME=$(basename ~{inputBamOrCram})
+				echo "'${BASHFILENAME}'" > thisFilename
+			else
+				# Cram file but no reference genome
+				>&2 echo "Cram detected but cannot find reference genome."
+				>&2 echo "A reference genome is required for cram inputs."
+				exit 1
+			fi
 		
 		else
 			# Not a cram file
@@ -80,6 +88,7 @@ task getReadLengthAndCoverage {
 			fi
 			
 			goleft covstats -f ~{refGenome} ~{inputBamOrCram} >> this.txt
+
 			COVOUT=$(tail -n +2 this.txt)
 			read -a COVARRAY <<< "$COVOUT"
 			echo ${COVARRAY[1]} > thisCoverage
@@ -113,9 +122,9 @@ task report {
 
 	f = open("reports.txt", "a")
 
-	pyReadLengths = ~{sep="," readLengths} # array of ints
-	pyCoverages = ~{sep="," coverages} # array of floats
-	pyFilenames = ~{sep="," filenames} # array of strings
+	pyReadLengths = ~{sep="," readLengths} # array of ints OR int
+	pyCoverages = ~{sep="," coverages} # array of floats OR float
+	pyFilenames = ~{sep="," filenames} # array of strings OR string
 	i = 0
 
 	# print "table" with each inputs' read length and coverage
@@ -140,26 +149,6 @@ task report {
 	}
 }
 
-task crash {
-	input {
-		String errorCode
-		#Int crashMe = 99999999
-		#Int crashMePlease = 99999999
-		#Int noRefGenomeCrash = crashMe * crashMePlease
-	}
-	command <<<
-
-	set -eux -o pipefail
-	echo "this is not an integer" >> nothing.txt
-	echo "~{errorCode}"
-	exit("~{errorCode}")
-
-	>>>
-	output {
-		Int badOutput = read_string("nothing.txt")
-	}
-}
-
 workflow covstats {
 	input {
 		Array[File] inputBamsOrCrams
@@ -177,26 +166,6 @@ workflow covstats {
 		Array[String] allIndexes = select_first([inputIndexes, wholeLottaNada])
 		String base = "${basename(oneBamOrCram)}"
 		String cramReplaced = sub(base, "\\.cram", "pneumonoultramicroscopicsilicovolcanoconiosis")
-
-		if (base != cramReplaced) {
-			# Input is a cram file, so we want to assert the user provided a reference genome
-			call crash {
-				input:
-					errorCode = "Cram file input detected but ref genome is missing"
-			}
-		}
-
-		# not firing
-		if (!defined(refGenome)) {
-			#Int crashMe = 99999999
-			#Int crashMePlease = 99999999
-			#Int noRefGenomeCrash = crashMe * crashMePlease
-		}
-
-		# this does fire and does crash
-		#Int crashMe = 99999999
-		#Int crashMePlease = 99999999
-		#Int noRefGenomeCrash = crashMe * crashMePlease
 		
 		# scattered
 		if (length(allIndexes) != length(inputBamsOrCrams)) {
