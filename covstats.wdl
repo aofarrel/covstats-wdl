@@ -4,11 +4,26 @@ task index {
 	input {
 		File inputBamOrCram
 		String outputIndexString
+		#Array[File] allInputIndexes
 	}
 
-	command {
-		samtools index ${inputBamOrCram} ${outputIndexString}
-	}
+	command <<<
+		# It is possible the user already passed in a bai file
+		OTHERPOSSIBILITY=$(echo ~{inputBamOrCram} | sed 's/\.[^.]*$//')
+		#if input indexes are not == [], ie are not wholelottanada then
+			#if [ -f ~{inputBamOrCram}.bai ]; then
+				# File already exists
+				#exit(0)
+			#elif [ -f ${OTHERPOSSIBILITY}.bai ]; then
+				# File already exists
+				#exit(0)
+			#else
+				#NOW we samtools index
+			#fi
+		#fi
+		
+		samtools index ~{inputBamOrCram} ~{outputIndexString}
+	>>>
 
 	output {
 		File outputIndex = outputIndexString
@@ -177,6 +192,7 @@ workflow covstats {
 			String outputBaiString = "${basename(oneBamOrCram)}.bai"
 			if (base == cramReplaced) {
 				# Only true if we are running on a bam
+				# Unfortunately this will index every bam even if not needed
 				call index {
 					input:
 						inputBamOrCram = oneBamOrCram,

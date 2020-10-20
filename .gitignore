@@ -10,3 +10,4 @@ debug/cromwell-input/*
 debug/out2.txt
 debug/out1.txt
 debug/allReadLengths
+terra.json
