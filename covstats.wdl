@@ -1,44 +1,9 @@
 version 1.0
 
-task index {
-	input {
-		File inputBamOrCram
-		String outputIndexString
-		#Array[File] allInputIndexes
-	}
-
-	command <<<
-		# It is possible the user already passed in a bai file
-		OTHERPOSSIBILITY=$(echo ~{inputBamOrCram} | sed 's/\.[^.]*$//')
-		#if input indexes are not == [], ie are not wholelottanada then
-			#if [ -f ~{inputBamOrCram}.bai ]; then
-				# File already exists
-				#exit(0)
-			#elif [ -f ${OTHERPOSSIBILITY}.bai ]; then
-				# File already exists
-				#exit(0)
-			#else
-				#NOW we samtools index
-			#fi
-		#fi
-		
-		samtools index ~{inputBamOrCram} ~{outputIndexString}
-	>>>
-
-	output {
-		File outputIndex = outputIndexString
-	}
-
-	runtime {
-        docker: "quay.io/biocontainers/goleft:0.2.0--0"
-    }
-}
-
 task getReadLengthAndCoverage {
 	input {
 		File inputBamOrCram
-		File? inputIndex # if samtools index was called
-		Array[File] allInputIndexes # if samtools index was not called
+		Array[File] allInputIndexes
 		File? refGenome
 	}
 
@@ -74,33 +39,20 @@ task getReadLengthAndCoverage {
 			fi
 		
 		else
-			# Not a cram file
-			
-			# If the user passes in the indices, they will be in the same folder
-			# as the input bams/crams. If samtools index was called to generate
-			# the indices, then they will be in a different folder.
+			# Bam file
 
 			OTHERPOSSIBILITY=$(echo ~{inputBamOrCram} | sed 's/\.[^.]*$//')
 
 			if [ -f ~{inputBamOrCram}.bai ]; then
 				# foo.bam.bai
-				echo "Bai file, likely passed in by user, exists with pattern *.bam.bai"
-			elif [ ~{inputIndex} != ~{inputBamOrCram} ]; then
-				# foo.bam.bai
-				echo "Bai file, likely output of samtools index, exists"
-				# goleft tries to look for the bai in the same folder as the bam, but 
-				# they're not in the same folder if the input came from samtools index,
-				# so we have to symlink it. goleft automatically checks for both 
-				# foo.bam.bai and foo.bai, so it's okay if we use either 
-				inputBamDir=$(dirname ~{inputBamOrCram})
-				ln -s ~{inputIndex} ~{inputBamOrCram}.bai
+				echo "Bai file already exists with pattern *.bam.bai"
 			elif [ -f ${OTHERPOSSIBILITY}.bai ]; then
 				# foo.bai
-				echo "Bai file, likely passed in by user, exists with pattern *.bai"
+				echo "Bai file already exists with pattern *.bai"
 			else
-				>&2 echo -n "Input bai file (~{inputBamOrCram}.bai)"
-				>&2 echo " nor ${OTHERPOSSIBILITY}.bai not found, panic"
-				exit 1
+				echo -n "Input bai file (~{inputBamOrCram}.bai)"
+				echo " nor ${OTHERPOSSIBILITY}.bai not found"
+				samtools index ~{inputBamOrCram} ~{inputBamOrCram}.bai
 			fi
 			
 			goleft covstats -f ~{refGenome} ~{inputBamOrCram} >> this.txt
@@ -176,69 +128,18 @@ workflow covstats {
 		File? refGenome
 	}
 
-	# weird workaround to see if inputIndexes are defined, but only for bam files
+	# weird workaround to see if inputIndexes are defined
 	Array[String] wholeLottaNada = []
 
 	scatter(oneBamOrCram in inputBamsOrCrams) {
-		Array[File] batchInputAms = [oneBamOrCram]
-
-		# prepare for the worst workaround you have ever seen.
-		Array[String] allIndexes = select_first([inputIndexes, wholeLottaNada])
-		String base = "${basename(oneBamOrCram)}"
-		String cramReplaced = sub(base, "\\.cram", "pneumonoultramicroscopicsilicovolcanoconiosis")
-		
-		# scattered
-		if (length(allIndexes) != length(inputBamsOrCrams)) {
-			String outputBaiString = "${basename(oneBamOrCram)}.bai"
-			if (base == cramReplaced) {
-				# Only true if we are running on a bam
-				# Unfortunately this will index every bam even if not needed
-				call index {
-					input:
-						inputBamOrCram = oneBamOrCram,
-						outputIndexString = outputBaiString
-				}
-			}
-		}
+		Array[String] allOrNoIndexes = select_first([inputIndexes, wholeLottaNada])
 
 		#scattered
 		call getReadLengthAndCoverage as scatteredGetStats { 
 			input:
 				inputBamOrCram = oneBamOrCram,
 				refGenome = refGenome,
-				# Let me explain this foolishness...
-				# samtools index takes time so we want to skip it whenever
-				# possible. If the user does not supply indexes for every
-				# input (technically it's if the user's bam/cram inputs is
-				# a different number of files then the user's bai/crai inputs)
-				# then a scattered samtools index will run. That scattered
-				# samtools index will return a single index file, which
-				# is index.outputIndex. But if the user does define indeces,
-				# then the index will be some file in the input array. Iterating
-				# arrays in WDl is a nightmare, as well as unnecessary in this
-				# situation, because the index just needs to be in the working
-				# directory when covstats is run. So whether we pass in an
-				# array of files or just a single file, we're good. The problem
-				# is we can't use another if (or the same if as above) to just
-				# say "if user defined indeces then pass in the array else pass
-				# in the output of samtools index" because Cromwell does not
-				# recognize those two ifs (WDL lacks an else statement) as being
-				# mutually exclusive, so it's mad that results are being duplicated.
-				# So we try to pass in both a file AND an array, both of which are
-				# optional inputs. Recall that allIndexes is already the result
-				# of a select_first(), so it is either the users' passed in index
-				# files, or an empty array. An empty array is still a valid array
-				# in WDL so that's fine and dandy. But, if you pass an empty string
-				# or a file that doesn't exist into a File or File? input, that is
-				# not valid. One possible workaround would be to create an extra task
-				# that simply just uses bash touch to create a blank file, but when
-				# running locally even quick tasks slow down execution. So it's more
-				# efficient to use some other file as the dummy file that will be
-				# passed in when the user does define indeces and samtools index is
-				# skipped. So what's a file that always will be defined, without
-				# fail? The exact same bam or cram file we are running covstats on.
-				allInputIndexes = allIndexes,
-				inputIndex = select_first([index.outputIndex, oneBamOrCram])
+				allInputIndexes = allOrNoIndexes
 		}
 	}
 
