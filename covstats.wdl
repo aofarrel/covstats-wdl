@@ -27,7 +27,7 @@ task getReadLengthAndCoverage {
 				# Sometimes this.txt seems to be missing the header... investigate
 				COVOUT=$(tail -n +2 this.txt)
 				read -a COVARRAY <<< "$COVOUT"
-				echo ${COVARRAY[1]} > thisCoverage
+				echo ${COVARRAY[0]} > thisCoverage
 				echo ${COVARRAY[11]} > thisReadLength
 				BASHFILENAME=$(basename ~{inputBamOrCram})
 				echo "'${BASHFILENAME}'" > thisFilename
@@ -59,7 +59,7 @@ task getReadLengthAndCoverage {
 
 			COVOUT=$(tail -n +2 this.txt)
 			read -a COVARRAY <<< "$COVOUT"
-			echo ${COVARRAY[1]} > thisCoverage
+			echo ${COVARRAY[0]} > thisCoverage
 			echo ${COVARRAY[11]} > thisReadLength
 			BASHFILENAME=$(basename ~{inputBamOrCram})
 			echo "'${BASHFILENAME}'" > thisFilename
@@ -119,6 +119,9 @@ task report {
 	output {
 		File finalOut = "reports.txt"
 	}
+	runtime {
+        docker: "python:3.8-slim"
+    }
 }
 
 workflow covstats {
