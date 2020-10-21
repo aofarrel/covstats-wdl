@@ -9,6 +9,8 @@ task getReadLengthAndCoverage {
 
 	command <<<
 
+		start=$SECONDS
+
 		set -eux -o pipefail
 
 		if [ -f ~{inputBamOrCram} ]; then
@@ -65,11 +67,15 @@ task getReadLengthAndCoverage {
 			echo "'${BASHFILENAME}'" > thisFilename
 		fi
 
+		duration=$(( SECONDS - start ))
+		echo ${duration} > duration
+
 	>>>
 	output {
 		Int outReadLength = read_int("thisReadLength")
 		Float outCoverage = read_float("thisCoverage")
 		String outFilenames = read_string("thisFilename")
+		Int duration = read_int("duration")
 	}
 	runtime {
         docker: "quay.io/biocontainers/goleft:0.2.0--0"
