@@ -1,0 +1,10 @@
+{
+  "covstats.inputBamsOrCrams": [
+    "gs://topmed_workflow_testing/topmed_variant_caller/input_files/NWD176325.chr1_10000000-11000000.recab.cram",
+    "gs://topmed_workflow_testing/bravo/bams/HG02840.bam"
+ ],
+  "covstats.inputIndexes": [
+    "gs://topmed_workflow_testing/bravo/bams/HG02840.bam.bai"
+ ],
+  "covstats.refGenome": "gs://topmed_workflow_testing/bravo/hs37d5.fa"
+}

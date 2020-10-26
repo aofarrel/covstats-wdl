@@ -1,3 +1,0 @@
-{"covstats.inputBamsOrCrams": ["gs://fc-bd704f13-598e-4f2a-bf3c-3db7506549be/NA12878.chrom19.ILLUMINA.bwa.CEU.high_coverage.20100311.bam", "gs://fc-bd704f13-598e-4f2a-bf3c-3db7506549be/NA12878.chrom20.ILLUMINA.bwa.CEU.low_coverage.20121211.bam", "gs://fc-bd704f13-598e-4f2a-bf3c-3db7506549be/NWD119836.0005.recab.cram"],
-"covstats.inputIndexes": ["gs://fc-bd704f13-598e-4f2a-bf3c-3db7506549be/NA12878.chrom20.ILLUMINA.bwa.CEU.low_coverage.20121211.bam"],
-"covstats.refGenome": "gs://fc-bd704f13-598e-4f2a-bf3c-3db7506549be/hs38DH.fa"}
