@@ -69,7 +69,7 @@ task getReadLengthAndCoverage {
 
 		duration=$(( SECONDS - start ))
 		echo ${duration} > duration
-    
+
 		goleft covstats ~{inputBamOrCram} >> this.txt
 		COVOUT=$(tail -n +2 this.txt)
 		read -a COVARRAY <<< "$COVOUT"
@@ -86,8 +86,8 @@ task getReadLengthAndCoverage {
 		Int duration = read_int("duration")
 	}
 	runtime {
-        docker: "quay.io/biocontainers/goleft:0.2.0--0"
-    }
+		docker: "quay.io/biocontainers/goleft:0.2.0--0"
+	}
 }
 
 task report {
@@ -135,8 +135,8 @@ task report {
 	}
 
 	runtime {
-        docker: "python:3.8-slim"
-    }
+		docker: "python:3.8-slim"
+	}
 }
 
 workflow covstats {
@@ -170,7 +170,7 @@ workflow covstats {
 	}
 
 	meta {
-        author: "Ash O'Farrell"
-        email: "aofarrel@ucsc.edu"
+		author: "Ash O'Farrell"
+		email: "aofarrel@ucsc.edu"
     }
 }
