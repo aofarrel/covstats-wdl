@@ -5,24 +5,9 @@ task getReadLengthAndCoverage {
 		File inputBamOrCram
 		Array[File] allInputIndexes
 		File? refGenome
-
-		# DEBUG
-		Int? refSize = ceil(size(refGenome, "GB"))
-		Int? indexSize = ceil(size(allInputIndexes, "GB"))
-		Int? thisAmSize = ceil(size(inputBamOrCram, "GB"))
 	}
 
 	command <<<
-		# DELETE -- DEBUG ONLY -- PRINT DISK SIZE
-		#finalDiskSize = ~{refSize} + ~{indexSize} + (2*~{thisAmSize})
-		echo "ref " > thisSize
-		echo ~{refSize} >> thisSize
-		echo "index " >> thisSize
-		echo ~{indexSize} >> thisSize
-		echo "this file " >> thisSize
-		echo ~{thisAmSize} >> thisSize
-		#echo "final " >> thisSize
-		#echo ~{finalDiskSize} >> finalDiskSize
 
 		start=$SECONDS
 
@@ -89,7 +74,7 @@ task getReadLengthAndCoverage {
 
 	# Estimate disk size required
 	Int refSize = ceil(size(refGenome, "GB"))
-	Int indexSize = ceil(size(allInputIndexes))
+	Int indexSize = ceil(size(allInputIndexes, "GB"))
 	#lets see if we can do this on a task level to save space
 	#Int amSize = ceil(size(inputBamsOrCrams, "GB"))
 	Int thisAmSize = ceil(size(inputBamOrCram, "GB"))
