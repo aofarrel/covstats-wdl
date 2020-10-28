@@ -70,14 +70,6 @@ task getReadLengthAndCoverage {
 		duration=$(( SECONDS - start ))
 		echo ${duration} > duration
 
-		goleft covstats ~{inputBamOrCram} >> this.txt
-		COVOUT=$(tail -n +2 this.txt)
-		read -a COVARRAY <<< "$COVOUT"
-		echo ${COVARRAY[0]} > thisCoverage
-		echo ${COVARRAY[11]} > thisReadLength
-		BASHFILENAME=$(basename ~{inputBamOrCram})
-		echo "'${BASHFILENAME}'" > thisFilename
-
 	>>>
 	output {
 		Int outReadLength = read_int("thisReadLength")
