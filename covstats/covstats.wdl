@@ -97,7 +97,7 @@ task getReadLengthAndCoverage {
 	runtime {
 		docker: "quay.io/biocontainers/goleft:0.2.0--0"
 		preemptible: 1
-		disks: "local-disk" + finalDiskSize + " HDD"
+		disks: "local-disk " + finalDiskSize + " HDD"
 	}
 }
 
