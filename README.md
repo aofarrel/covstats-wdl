@@ -1,5 +1,5 @@
 # covstats-wdl
-![License shield](https://img.shields.io/github/license/aofarrel/covstats-wdl)  [![WDL 1.0 shield](https://img.shields.io/badge/WDL-1.0-lightgrey.svg)](https://github.com/openwdl/wdl/blob/main/versions/1.0/SPEC.md)
+[![WDL 1.0 shield](https://img.shields.io/badge/WDL-1.0-lightgrey.svg)](https://github.com/openwdl/wdl/blob/main/versions/1.0/SPEC.md)
 
 A WDLized version of [goleft](https://github.com/brentp/goleft) covstats functions.
 
