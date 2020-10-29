@@ -1,13 +1,7 @@
 
 Cromwell.stdout.txt
 Cromwell.stderr.txt
-local.json
 .DS_Store
-empty.txt
-this.txt
-out.txt
 debug/cromwell-input/*
 debug/out2.txt
-debug/out1.txt
-debug/allReadLengths
-terra.json
+debug/out1.txt 
