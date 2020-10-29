@@ -71,6 +71,23 @@ task getReadLengthAndCoverage {
 		echo ${duration} > duration
 
 	>>>
+
+	# Estimate disk size required
+	Int refSize = ceil(size(refGenome, "GB"))
+	Int indexSize = ceil(size(allInputIndexes, "GB"))
+	#lets see if we can do this on a task level to save space
+	#Int amSize = ceil(size(inputBamsOrCrams, "GB"))
+	Int thisAmSize = ceil(size(inputBamOrCram, "GB"))
+
+	# If input is a cram, it will get samtools'ed into a bam,
+	# so we need to at least double its size for the disk
+	# calculation. Eventually we might be be able to go back
+	# to the old mess of the cram-support branch (PR3) at least
+	# in terms of determining if something is a cram ahead of time
+	# in order to maximize savings.
+
+	Int finalDiskSize = refSize + indexSize + (2*thisAmSize)
+
 	output {
 		Int outReadLength = read_int("thisReadLength")
 		Float outCoverage = read_float("thisCoverage")
@@ -79,6 +96,8 @@ task getReadLengthAndCoverage {
 	}
 	runtime {
 		docker: "quay.io/biocontainers/goleft:0.2.0--0"
+		preemptible: 1
+		disks: "local-disk " + finalDiskSize + " HDD"
 	}
 }
 
@@ -128,6 +147,7 @@ task report {
 
 	runtime {
 		docker: "python:3.8-slim"
+		preemptible: 1
 	}
 }
 
