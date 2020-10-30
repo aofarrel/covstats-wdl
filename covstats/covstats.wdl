@@ -95,7 +95,7 @@ task getReadLengthAndCoverage {
 		Int duration = read_int("duration")
 	}
 	runtime {
-		docker: "quay.io/biocontainers/goleft:0.2.0--0"
+		docker: "0647160857f9"
 		preemptible: 1
 		disks: "local-disk " + finalDiskSize + " HDD"
 	}

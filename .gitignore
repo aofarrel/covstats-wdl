@@ -5,3 +5,4 @@ Cromwell.stderr.txt
 debug/cromwell-input/*
 debug/out2.txt
 debug/out1.txt 
+covstats/cromwell-input/*
