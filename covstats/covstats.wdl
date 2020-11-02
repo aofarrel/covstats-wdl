@@ -147,7 +147,7 @@ task report {
 
 	runtime {
 		docker: "python:3.8-slim"
-		preemptible: 1
+		preemptible: 2
 	}
 }
 
