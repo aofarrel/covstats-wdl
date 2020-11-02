@@ -95,7 +95,7 @@ task getReadLengthAndCoverage {
 		Int duration = read_int("duration")
 	}
 	runtime {
-		docker: "quay.io/aofarrel/goleft-covstats"
+		docker: "quay.io/aofarrel/goleft-covstats:custom-docker"
 		preemptible: 1
 		disks: "local-disk " + finalDiskSize + " HDD"
 	}
