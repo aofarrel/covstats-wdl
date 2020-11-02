@@ -1,0 +1,37 @@
+# Avoiding package managers for fun and profit
+# This is NOT functional at the moment and should not be used
+
+FROM golang:1.15-alpine
+
+# bzip2 (samtools) --> since this introduces it own issues and is a hard samtools requirement,
+# the usefulness of this dockerfile is questionable 
+RUN wget ftp://sources.redhat.com/pub/bzip2/bzip2-1.0.8.tar.gz
+RUN tar zxvf bzip2-1.0.8.tar.gz
+RUN cd bzip2-1.0.8 && make -f Makefile-libbz2_so && make clean && make && make install
+
+# git (go get)
+RUN wget https://github.com/git/git/archive/v2.29.2.tar.gz
+RUN tar zxvf v2.29.2.tar.gz
+RUN cd git && ./configure && make && install
+
+# liblzma-dev (samtools)
+
+# libbz2-dev (samtools)
+
+# zlib1g-dev (samtools)
+
+# samtools (goleft, needed for cram support)
+WORKDIR /usr/bin
+RUN wget https://github.com/samtools/samtools/releases/download/1.11/samtools-1.11.tar.bz2
+RUN tar -vxjf samtools-1.11.tar.bz2
+RUN cd samtools-1.11 && ./configure --without-curses && make && make install
+
+# uninstall bzip2 after using it for samtools
+RUN apt-get --purge remove bzip2 -y
+
+# source code
+RUN go get -u github.com/brentp/goleft/...
+RUN go install github.com/brentp/goleft/cmd/goleft
+WORKDIR /go/src/goleft
+
+CMD ["goleft"]

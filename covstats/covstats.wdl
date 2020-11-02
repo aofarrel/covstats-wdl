@@ -95,7 +95,7 @@ task getReadLengthAndCoverage {
 		Int duration = read_int("duration")
 	}
 	runtime {
-		docker: "quay.io/biocontainers/goleft:0.2.0--0"
+		docker: "quay.io/aofarrel/goleft-covstats:custom-docker"
 		preemptible: 1
 		disks: "local-disk " + finalDiskSize + " HDD"
 	}
@@ -147,7 +147,7 @@ task report {
 
 	runtime {
 		docker: "python:3.8-slim"
-		preemptible: 1
+		preemptible: 2
 	}
 }
 
