@@ -1,30 +1,26 @@
 FROM golang:1.15
 
+# prevent apt-get dialogs
+ENV DEBIAN_FRONTEND noninteractive
+
 # install goleft
 RUN go get -u github.com/brentp/goleft/...
 RUN go install github.com/brentp/goleft/cmd/goleft
-#WORKDIR /go/src/goleft
-#COPY . .
 
-# install bzip2 (required for samtools installation)
-#RUN wget ftp://sources.redhat.com/pub/bzip2/bzip2-1.0.8.tar.gz
-#RUN gunzip bzip2-1.0.8.tar.gz
-#RUN tar -xzv bzip2-1.0.8.tar.gz
+# install samtools-required packages
 RUN apt-get update
 RUN apt-get install bzip2
-#RUN make -f Makefile-libbz2_so
-#RUN make clean
-#RUN make
-#RUN make install
+RUN apt-get install zlib1g-dev
+RUN apt-get install libbz2-dev -y
+RUN apt-get install liblzma-dev -y
 
 # install samtools
 WORKDIR /usr/bin
-RUN wget https://github.com/samtools/samtools/releases/download/1.9/samtools-1.9.tar.bz2
-RUN tar -vxjf samtools-1.9.tar.bz2
-RUN cd samtools-1.9
-RUN ls && sleep 500
-RUN make
+RUN wget https://github.com/samtools/samtools/releases/download/1.11/samtools-1.11.tar.bz2
+RUN tar -vxjf samtools-1.11.tar.bz2
+RUN cd samtools-1.11 && ./configure --without-curses && make && make install
 
+# return to goleft's workdir
 WORKDIR /go/src/goleft
 
-CMD ["ls"]
+CMD ["goleft"]
