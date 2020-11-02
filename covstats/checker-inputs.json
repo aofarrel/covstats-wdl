@@ -1,0 +1,9 @@
+{
+  "checker.docker": "quay.io/aofarrel/goleft-covstats:master",
+  "checker.inputBamsOrCrams": [
+    "gs://topmed_workflow_testing/topmed_aligner/input_files/NWD119836.0005.recab.cram",
+    "gs://topmed_workflow_testing/bravo/bams/HG02840.bam"
+ ],
+  "checker.refGenome": "gs://topmed_workflow_testing/bravo/hs37d5.fa",
+  "checker.truth": ""
+}
