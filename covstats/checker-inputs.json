@@ -2,8 +2,10 @@
   "checker.docker": "quay.io/aofarrel/goleft-covstats:master",
   "checker.inputBamsOrCrams": [
     "gs://topmed_workflow_testing/topmed_aligner/input_files/NWD119836.0005.recab.cram",
+    "gs://topmed_workflow_testing/topmed_aligner/input_files/NWD176325.recab.cram",
+    "gs://topmed_workflow_testing/topmed_aligner/input_files/NWD136397.0005.recab.cram",
     "gs://topmed_workflow_testing/bravo/bams/HG02840.bam"
  ],
-  "checker.refGenome": "gs://topmed_workflow_testing/bravo/hs37d5.fa",
-  "checker.truth": ""
+  "checker.refGenome": "ftp://ftp.1000genomes.ebi.ac.uk/vol1/ftp/technical/reference/GRCh38_reference_genome/GRCh38_full_analysis_set_plus_decoy_hla.fa",
+  "checker.truth": "debug/reports.txt"
 }
