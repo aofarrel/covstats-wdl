@@ -7,5 +7,3 @@ debug/out2.txt
 debug/out1.txt 
 covstats/cromwell-input/*
 cromwell-input/*
-debug/local-terra-input-tests/hs37d5.fa
-*.cram
