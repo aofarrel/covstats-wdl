@@ -5,6 +5,7 @@ task getReadLengthAndCoverage {
 		File inputBamOrCram
 		Array[File] allInputIndexes
 		File? refGenome
+		String toUse
 	}
 
 	command <<<
@@ -95,7 +96,7 @@ task getReadLengthAndCoverage {
 		Int duration = read_int("duration")
 	}
 	runtime {
-		docker: "quay.io/aofarrel/goleft-covstats:custom-docker"
+		docker: if toUse == "true" then "quay.io/biocontainers/goleft:0.2.0--0" else "quay.io/aofarrel/goleft-covstats:custom-docker"
 		preemptible: 1
 		disks: "local-disk " + finalDiskSize + " HDD"
 	}
@@ -151,25 +152,94 @@ task report {
 	}
 }
 
+task debugEchoes1 {
+	# I regret this, but my hand has been forced.
+	input {
+		String toEcho
+	}
+
+	command <<<
+	echo ~{toEcho} > debugInformation.txt
+	>>>
+
+	output {
+		String debugInformation = read_string("debugInformation.txt")
+	}
+
+	runtime {
+		docker: "python:3.8-slim"
+		preemptible: 1
+	}
+}
+
+task debugEchoes2 {
+	# I regret this, but my hand has been forced.
+	input {
+		String toEcho
+	}
+
+	command <<<
+	echo ~{toEcho} > debugInformation.txt
+	>>>
+
+	output {
+		String debugInformation = read_string("debugInformation.txt")
+	}
+
+	runtime {
+		docker: "python:3.8-slim"
+		preemptible: 1
+	}
+}
+
 workflow covstats {
 	input {
 		Array[File] inputBamsOrCrams
 		Array[File]? inputIndexes
 		File? refGenome
+		String? useLegacyContainer
 	}
 
-	# weird workaround to see if inputIndexes are defined
+	# weird workaround to see if inputIndexes are defined, used in old
+	# versions but now more of an error fallback
 	Array[String] wholeLottaNada = []
 
+	# Figure out which Docker to use
+	String toUse = select_first([useLegacyContainer, "false"])
+
+	# It appears this cannot be done on the task level as if statements
+	# outside the command syntax of a task upset womtool, but at the same
+	# time we cannot put tasks themselves in if statements because womtool
+	# does not recognize they are mutually exclusive and gets upset about
+	# the possibility of duplicated results.
+	# Likewise it seems they cannot go in the workflow section as it cannot
+	# tell when multiple if statements are mutually exclusive.
+	# 
+
+	if (toUse == "true") {
+		call debugEchoes1 {input: toEcho = "Using legacy Docker container"}
+	}
+
+	if (toUse == "false") {
+		call debugEchoes2 {input: toEcho = "Using updated Docker container"}
+	}
+
+	# Catching input typos from user doesn't seem possible due to how variables 
+	# are scoped unfortunately, but I did make an attempt which I stored here
+	# https://gist.github.com/aofarrel/ef71e1a27d824cbcc8acb11b6abe6e19
+	# in case some brave soul wants to take a crack at it
+
+
+	# call covstats
 	scatter(oneBamOrCram in inputBamsOrCrams) {
 		Array[String] allOrNoIndexes = select_first([inputIndexes, wholeLottaNada])
-
-		#scattered
+		
 		call getReadLengthAndCoverage as scatteredGetStats { 
 			input:
 				inputBamOrCram = oneBamOrCram,
 				refGenome = refGenome,
-				allInputIndexes = allOrNoIndexes
+				allInputIndexes = allOrNoIndexes,
+				toUse = toUse
 		}
 	}
 
