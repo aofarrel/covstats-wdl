@@ -2,7 +2,7 @@
   "covstats.inputBamsOrCrams": [
     "/Users/ash/Documents/aaa_test_files/bams/HG02840.bam",
     "/Users/ash/Documents/aaa_test_files/crams/NWD119836.0005.recab.cram",
-    "/Users/ash/Documents/aaa_test_files/crams/topmed_aligner_input_files_NWD176325.recab.cram"
+    "/Users/ash/Documents/aaa_test_files/crams/NWD176325.recab.cram"
  ],
   "covstats.refGenome": "/Users/ash/Documents/aaa_test_files/ref_genomes/hs38DH/hs38DH.fa",
   

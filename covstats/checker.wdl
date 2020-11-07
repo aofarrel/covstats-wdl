@@ -19,26 +19,37 @@ task md5sum {
 
   command <<<
 
-  MD5REPORT=$(md5sum ~{report})
-  MD5TRUTH=$(md5sum ~{truth})
+  # Terra can mix up files 
 
-  if [[${MD5REPORT}==${MD5TRUTH}]]
-  then
-    echo "Checksums match"
-    echo $MD5REPORT
-    echo $MD5TRUTH
-  else
-    echo "Checksums do not match, see stderr for details"
-    >&2 echo "ERROR, CHECKSUMS DO NOT MATCH"
-    >&2 echo "Output checksum: ${MD5REPORT}"
-    >&2 echo "Truth checksum: ${MD5TRUTH}"
-    >&2 echo "Contents of the output file:"
-    >&2 cat ~{report}
-    >&2 echo "Contents of the truth file:"
-    >&2 cat ~{truth} 
-    >&2 echo "Now exiting with code 1..."
-    exit 1
-  fi
+  sort ~{report} > newreport.txt
+  sort ~{truth} > newtruth.txt
+
+  md5sum newreport.txt > sum.txt
+  md5sum newtruth.txt > debugtruth.txt
+
+  # temporarily outputting to stderr for clarity's sake
+  >&2 echo "Output checksum:"
+  >&2 cat sum.txt
+  >&2 echo "-=-=-=-=-=-=-=-=-=-"
+  >&2 echo "Truth checksum:"
+  >&2 cat debugtruth.txt
+  >&2 echo "-=-=-=-=-=-=-=-=-=-"
+  >&2 echo "Contents of the output file:"
+  >&2 cat ~{report}
+  >&2 echo "-=-=-=-=-=-=-=-=-=-"
+  >&2 echo "Contents of the truth file:"
+  >&2 cat ~{truth}
+  >&2 echo "-=-=-=-=-=-=-=-=-=-"
+  >&2 cat newreport.txt
+  >&2 echo "-=-=-=-=-=-=-=-=-=-"
+  >&2 echo "Contents of the sorted truth file:"
+  >&2 cat newtruth.txt
+  >&2 echo "-=-=-=-=-=-=-=-=-=-"
+  >&2 cmp --verbose sum.txt debugtruth.txt
+  >&2 diff sum.txt debugtruth.txt
+  >&2 diff -w sum.txt debugtruth.txt
+
+  cat ~{truth} | md5sum --check sum.txt
 
   >>>
 
