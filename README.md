@@ -1,9 +1,11 @@
 # covstats-wdl
 [![WDL 1.0 shield](https://img.shields.io/badge/WDL-1.0-lightgrey.svg)](https://github.com/openwdl/wdl/blob/main/versions/1.0/SPEC.md)  [![Docker Repository on Quay](https://quay.io/repository/aofarrel/goleft-covstats/status "Docker Repository on Quay")](https://quay.io/repository/aofarrel/goleft-covstats)
 
-A WDLized version of [goleft](https://github.com/brentp/goleft) covstats functions.
+A WDLized and Dockerized version of [goleft](https://github.com/brentp/goleft) covstats functions.
 
-*covstats.wdl* runs covstats on an array of bam or cram files. For bam files, the user can also specify bai files to skip the `samtools index`ing step and allow for faster completion. The result is a text file that prints the filename, read length, and coverage of every input file, then the average coverage and read length for the entire array of inputs. However, all covstats entries are also reported as `this.txt` in each shard's working directory, which can assist in gaining more statistics or debugging (see Limitations).
+*covstats.wdl* runs covstats on an array of bam or cram files. For bam files, the user can also specify bai files to skip the `samtools index`ing step and allow for faster completion. The result is a text file, `reports.txt`, that prints the filename, read length, and coverage of every input file, then the average coverage and read length for the entire array of inputs. However, all covstats entries are also reported as `this.txt` in each shard's working directory, which can assist in gaining more statistics or debugging (see Limitations).
+
+*checker.wdl* is the checker workflow for covstats.wdl and draws upon a truth file in the debug folder. Note that because the order which scattered processes go through input files can vary depending on platform, and that order influcences the order that outputs appear in the final output, reports.txt, so the checker workflow will attempt sort everything including the header line in alphabetical order. A non-sorted output will be included in the execution directory, although exactly where will depend on your platform. On Terra, in the Job Manager page, you can find it in the Job Manager page. On List View you will see the third step, report, and the non-sorted output will be listed as the output of that task.
 
 For more WDLs from goleft, see [goleft-wdl](https://github.com/aofarrel/goleft-wdl/blob/main/README.md).
 
@@ -17,7 +19,7 @@ covstats cannot generate coverage information for CRAM files and will report a v
 Although cram files are supported except for coverage, they are slower to process than bam files, so if you have both, use the bams. Cram files also require the specification of a reference genome and are not processed any faster by the inclusion of an index (crai) file. This is due to the fact they have to be reprocessed with samtools.
 
 ### Cram/Ref mismatch
-If the user inputs a cram file that was aligned to a different reference genome than the one that is being provided as an input, there is a *possibility* that goleft will not give proper output. Make sure your reference genomes match up, or consider using the alternative Docker container, which is better able to handle a spaghetti-like mess of crams if that is what you need to process.
+If the user inputs a cram file that was aligned to a different reference genome than the one that is being provided as an input, there is a *possibility* that goleft will not give proper output. Make sure your reference genomes match up, or consider using the alternative Docker container, which is better able to handle a large number of crams aligned to unknown or various reference genomes.
 
 ### Silent errors
 Due to the odd way error codes are handled in go and WDL, it is unfortunately possible for an error to occur in the covstats task but for the task itself to be incorrectly reported as a success. I have tried to account for the most common errors by limiting the chances of them occuring, reducing space for user errors, and adding manually checks but of course something may have slipped by me. Thankfully, a "silent" error happening in the covstats task will have a very recognizable signature, and will look like one of these two sitautions:
