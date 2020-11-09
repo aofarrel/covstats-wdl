@@ -7,3 +7,7 @@ debug/out2.txt
 debug/out1.txt 
 covstats/cromwell-input/*
 cromwell-input/*
+*.fa
+*.cram
+*.bai
+*.bam
