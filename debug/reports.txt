@@ -1,0 +1,6 @@
+Filename	Read length	Coverage
+HG02840.bam	100	5.97
+NWD119836.0005.recab.cram	151	0.0
+NWD176325.recab.cram	151	0.0
+Average read length: 134.0
+Average coverage: 1.99
