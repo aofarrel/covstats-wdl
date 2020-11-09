@@ -1,0 +1,8 @@
+version: 1.2
+workflows:
+        - name: goleft-covstats
+        subcalss: WDL
+        primaryDescriptorPath: /covstats/covstats.wdl
+        testParameterFiles:
+                - /covstats/inputs_terra.json
+~
