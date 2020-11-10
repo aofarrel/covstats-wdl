@@ -50,6 +50,8 @@ task md5sum {
   >&2 diff -w sum.txt debugtruth.txt
 
   cat ~{truth} | md5sum --check sum.txt
+  # if pass pipeline records success
+  # if fail pipeline records error
 
   >>>
 
@@ -73,34 +75,32 @@ workflow checker {
   # one of the cleaner ways to go about it.
   Array[String] wholeLottaNada = []
 
-  # Figure out which Docker to use
-  # The choose container is printed in the task itself
-  String toUse = select_first([useLegacyContainer, "false"])
-
-  # Catching input typos from user doesn't seem possible due to how variables 
-  # are scoped unfortunately, but I did make an attempt which I stored here
-  # https://gist.github.com/aofarrel/ef71e1a27d824cbcc8acb11b6abe6e19
-  # in case some brave soul wants to take a crack at it
-
   # Call covstats
   scatter(oneBamOrCram in inputBamsOrCrams) {
     Array[String] allOrNoIndexes = select_first([inputIndexes, wholeLottaNada])
     
-    call getReadLengthAndCoverage as scatteredGetStats { 
+    call covstats.getReadLengthAndCoverage as scatteredGetStats { 
       input:
         inputBamOrCram = oneBamOrCram,
         refGenome = refGenome,
         allInputIndexes = allOrNoIndexes,
-        toUse = toUse
+        toUse = useLegacyContainer
     }
   }
 
   # not scattered
-  call report {
+  call covstats.report {
     input:
       readLengths = scatteredGetStats.outReadLength,
       coverages = scatteredGetStats.outCoverage,
       filenames = scatteredGetStats.outFilenames
+  }
+
+  call md5sum {
+    input:
+        report = report.finalOut,
+        truth = truth,
+        refGenome = refGenome
   }
 
   meta {
