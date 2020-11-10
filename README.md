@@ -1,31 +1,25 @@
 # covstats-wdl
 [![WDL 1.0 shield](https://img.shields.io/badge/WDL-1.0-lightgrey.svg)](https://github.com/openwdl/wdl/blob/main/versions/1.0/SPEC.md)  [![Docker Repository on Quay](https://quay.io/repository/aofarrel/goleft-covstats/status "Docker Repository on Quay")](https://quay.io/repository/aofarrel/goleft-covstats)
 
-A WDLized and Dockerized version of [goleft](https://github.com/brentp/goleft) covstats functions.
+*Temporary note: The autobuilding Docker image currently relies on a pull from Google's golang image on Docker Hub. Recently [Docker Hub has been heavily throttling pulls](https://www.docker.com/blog/scaling-docker-to-serve-millions-more-developers-network-egress/) and a side effect is that images built on Quay's architecture fail at random, but I can confirm that the last successful build of master is up to date. As my WDL pulls from Quay it will work fine on Terra/others in spite of the new pull limit.*
 
-*covstats.wdl* runs covstats on an array of bam or cram files. For bam files, the user can also specify bai files to skip the `samtools index`ing step and allow for faster completion. The result is a text file, `reports.txt`, that prints the filename, read length, and coverage of every input file, then the average coverage and read length for the entire array of inputs. However, all covstats entries are also reported as `this.txt` in each shard's working directory, which can assist in gaining more statistics or debugging (see Limitations).
+A WDLized and Dockerized version of [goleft](https://github.com/brentp/goleft) covstats functions. [Also registered on Dockstore!](https://dockstore.org/my-workflows/github.com/aofarrel/covstats-wdl)
+
+*covstats.wdl* runs covstats on an array of bam or cram files. For bam files, the user can also specify bai files to skip the `samtools index`ing step and allow for faster completion. The result is a text file, `reports.txt`, that prints the filename, read length, and coverage of every input file, then the average coverage and read length for the entire array of inputs. However, all covstats entries are also reported as `this.txt` in each shard's working directory, which can assist in gaining more statistics or debugging. If any of the inputs are cram files then specification of a reference genome is a requirement.
 
 *checker.wdl* is the checker workflow for covstats.wdl and draws upon a truth file in the debug folder. Note that because the order which scattered processes go through input files can vary depending on platform, and that order influcences the order that outputs appear in the final output, reports.txt, so the checker workflow will attempt sort everything including the header line in alphabetical order. A non-sorted output will be included in the execution directory, although exactly where will depend on your platform. On Terra, in the Job Manager page, you can find it in the Job Manager page. On List View you will see the third step, report, and the non-sorted output will be listed as the output of that task.  
 
 For more WDLs from goleft, see [goleft-wdl](https://github.com/aofarrel/goleft-wdl/blob/main/README.md).
 
 ## Limitations
-It turns out cram files are a different beast...
+-> covstats cannot generate coverage information for CRAM files and will report a value of 0.00 for that statistic  
+-> crams tend to process slower than bams due to how covstats reprocesses them with samtools  
+-> if the user inputs a cram file that was aligned to a different reference genome than the one that is being provided as an input, there is a *possibility* that goleft will not give proper output if using my image rather than the legacy image (see below)  
 
-### Cannot generate coverage for crams
-covstats cannot generate coverage information for CRAM files and will report a value of 0.00 for that statistic. Of course, if you have 0.00 values in your output, that will bring down the reported average coverage.
+## Alternative (Legacy) Docker Image
+There already exists [another Docker image](https://quay.io/repository/biocontainers/goleft?tab=tags) for goleft, which older versions of this code relied upon. As it hasn't been updated in about two years and cannot be easily scanned for security purposes, I decided to make my own image. My image is the default and has an automated build upon pushing to this repo. The images' differences in samtools appear to make my image run faster, but the legacy image can better handle the above cram/ref mismatch situation. So if you are running on dozens of crams that may have been built with different reference genomes, consider setting `covstats.useLegacyContainer` to `true`.
 
-### Crams tend to process slower
-Although cram files are supported except for coverage, they are slower to process than bam files, so if you have both, use the bams. Cram files also require the specification of a reference genome and are not processed any faster by the inclusion of an index (crai) file. This is due to the fact they have to be reprocessed with samtools.
-
-### Cram/Ref mismatch
-If the user inputs a cram file that was aligned to a different reference genome than the one that is being provided as an input, there is a *possibility* that goleft will not give proper output. Make sure your reference genomes match up, or consider using the alternative Docker container, which is better able to handle a large number of crams aligned to unknown or various reference genomes.
-
-### Silent errors
+## A note on debugging and silent errors
 Due to the odd way error codes are handled in go and WDL, it is unfortunately possible for an error to occur in the covstats task but for the task itself to be incorrectly reported as a success. I have tried to account for the most common errors by limiting the chances of them occuring, reducing space for user errors, and adding manually checks but of course something may have slipped by me. Thankfully, a "silent" error happening in the covstats task will have a very recognizable signature, and will look like one of these two sitautions:
-* The workflow overall we be reported as a success, but the final report will have values of zero for everything related to some or all of your cram files (occurs on the non-legacy container if there is a reference genome mismatch), not just coverage. This occurs during the cram/ref mismatch situation.
+* The workflow overall we be reported as a success, but the final report will have values of zero for everything related to some or all of your cram files, not just coverage. This occurs during the cram/ref mismatch situation on the non-legacy container.
 * The covstats task will be considered a success, but the workflow will fail on the report task. The actual error occurred in the covstats task, resulting in bogus output that the report task cannot parse.
-
-## Alternative Docker Container
-There already exists [another Docker container](https://quay.io/repository/biocontainers/goleft?tab=tags) for goleft, which older versions of this code relied upon. As it hasn't been updated in about two years and cannot be easily scanned for security purposes, I decided to make my own container. My container is the default and has an automated build upon pushing to this repo. These same differences in samtools appear to make my container run faster. That being said, the legacy container can better handle the above cram/ref mismatch situation, so of you are running on dozens of crams that may have been built with different reference genomes, consider setting `covstats.useLegacyContainer` to `true`.)
-
