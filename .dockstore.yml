@@ -4,5 +4,7 @@ workflows:
         subcalss: WDL
         primaryDescriptorPath: /covstats/covstats.wdl
         testParameterFiles:
-                - /covstats/inputs_terra.json
-~
+            - /covstats/inputs_terra.json
+        filters:
+          branches:
+            - master
