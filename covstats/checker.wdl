@@ -69,33 +69,34 @@ workflow checker {
     String useLegacyContainer # also not optional by design
   }
 
-  # weird workaround to see if inputIndexes are defined, used in old
-  # versions but now more of an error fallback
+  # Fallback if no indecies are defined. Other methods exist but this is
+  # one of the cleaner ways to go about it.
   Array[String] wholeLottaNada = []
 
-  if (useLegacyContainer == "true") {
-    call covstats.debugEchoes1 {input: toEcho = "Using legacy Docker container"}
-  }
+  # Figure out which Docker to use
+  # The choose container is printed in the task itself
+  String toUse = select_first([useLegacyContainer, "false"])
 
-  if (useLegacyContainer == "false") {
-    call covstats.debugEchoes2 {input: toEcho = "Using updated Docker container"}
-  }
+  # Catching input typos from user doesn't seem possible due to how variables 
+  # are scoped unfortunately, but I did make an attempt which I stored here
+  # https://gist.github.com/aofarrel/ef71e1a27d824cbcc8acb11b6abe6e19
+  # in case some brave soul wants to take a crack at it
 
+  # Call covstats
   scatter(oneBamOrCram in inputBamsOrCrams) {
     Array[String] allOrNoIndexes = select_first([inputIndexes, wholeLottaNada])
-
-    #scattered
-    call covstats.getReadLengthAndCoverage as scatteredGetStats { 
+    
+    call getReadLengthAndCoverage as scatteredGetStats { 
       input:
         inputBamOrCram = oneBamOrCram,
         refGenome = refGenome,
         allInputIndexes = allOrNoIndexes,
-        toUse = useLegacyContainer
+        toUse = toUse
     }
   }
 
   # not scattered
-  call covstats.report {
+  call report {
     input:
       readLengths = scatteredGetStats.outReadLength,
       coverages = scatteredGetStats.outCoverage,
@@ -105,12 +106,5 @@ workflow checker {
   meta {
     author: "Ash O'Farrell"
     email: "aofarrel@ucsc.edu"
-  }
-
- call md5sum {
-    input:
-        report = report.finalOut,
-        truth = truth,
-        refGenome = refGenome
     }
 }
