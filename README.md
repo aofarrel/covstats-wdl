@@ -8,7 +8,7 @@ A WDLized and Dockerized version of [goleft](https://github.com/brentp/goleft) c
 For more WDLs from goleft, see [goleft-wdl](https://github.com/aofarrel/goleft-wdl/blob/main/README.md).
 
 # Covstats.wdl
-*covstats.wdl* runs [covstats](https://github.com/brentp/goleft/tree/master/covstats#covstats) on an array of bam or cram files. Note that covstats' output are technically 
+*covstats.wdl* runs [covstats](https://github.com/brentp/goleft/tree/master/covstats#covstats) on an array of bam or cram files.
 ## Inputs
 * an array of bam files, cram files, or a combination of both
 * [optional] bai index files for bam inputs
