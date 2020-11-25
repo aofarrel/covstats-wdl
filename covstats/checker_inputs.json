@@ -5,6 +5,6 @@
     "gs://topmed_workflow_testing/topmed_aligner/input_files/NWD119836.0005.recab.cram"
  ],
   "checker.refGenome": "gs://topmed_workflow_testing/topmed_variant_caller/reference_files/hg38/hs38DH.fa",
-  "checker.truth": "debug/reports.txt",
+  "checker.truth": "gs://topmed_workflow_testing/goleft/covstats_checker_truthfile.txt",
   "checker.useLegacyContainer": "false"
 }
