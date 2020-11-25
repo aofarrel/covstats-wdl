@@ -6,5 +6,5 @@
  ],
   "covstats.refGenome": "/Users/ash/Documents/aaa_test_files/ref_genomes/hs38DH/hs38DH.fa",
   
-  "covstats.useLegacyContainer": "true"
+  "covstats.useLegacyContainer": "false"
 }
