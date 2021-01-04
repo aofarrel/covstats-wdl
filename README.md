@@ -1,7 +1,7 @@
 # covstats-wdl
 [![WDL 1.0 shield](https://img.shields.io/badge/WDL-1.0-lightgrey.svg)](https://github.com/openwdl/wdl/blob/main/versions/1.0/SPEC.md)  [![Docker Repository on Quay](https://quay.io/repository/aofarrel/goleft-covstats/status "Docker Repository on Quay")](https://quay.io/repository/aofarrel/goleft-covstats)
 
-*Temporary note: The autobuilding Docker image currently relies on a pull from Google's golang image on Docker Hub. Recently [Docker Hub has been heavily throttling pulls](https://www.docker.com/blog/scaling-docker-to-serve-millions-more-developers-network-egress/) and a side effect is that images built on Quay's architecture fail at random, but I can confirm that the last successful build of master is up to date. As my WDL pulls from Quay it will work fine on Terra/others in spite of the new pull limit.*
+*Note: Although this autobuilding Docker image currently relies on a pull from Google's golang image on Docker Hub and is hosted on Quay, it is immune to the current Quay-DockerHub pull issue, as the actual building is done on CirceCI which bypasses Quay's rate-limited build infrastructure.*
 
 A WDLized and Dockerized version of [goleft](https://github.com/brentp/goleft) covstats functions. [Also registered on Dockstore!](https://dockstore.org/my-workflows/github.com/aofarrel/covstats-wdl)
 
