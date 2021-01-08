@@ -10,10 +10,12 @@ task getReadLengthAndCoverage {
 
 	command <<<
 
+		>&2 echo "if this appears in stderr then Terra fetches from Dockstore three times"
+
 		if [ toUse == "true" ]; then
-			echo "Using legacy Docker container"
+			echo "Using legacy Docker container!!!!!"
 		else
-			echo "Using updated Docker container"
+			echo "Using updated Docker container!!!!!"
 		fi
 
 		start=$SECONDS
