@@ -6,6 +6,9 @@ task getReadLengthAndCoverage {
 		Array[File] allInputIndexes
 		File? refGenome
 		String toUse
+		Int memSize
+		Int preemptible
+		Int additionalDisk
 	}
 
 	command <<<
@@ -22,7 +25,7 @@ task getReadLengthAndCoverage {
 
 		if [ -f ~{inputBamOrCram} ]; then
 				echo "Input bam or cram file exists"
-		else 
+		else
 				>&2 echo "Input bam or cram file ~{inputBamOrCram} not found, panic"
 				exit 1
 		fi
@@ -46,7 +49,7 @@ task getReadLengthAndCoverage {
 				>&2 echo "A reference genome is required for cram inputs."
 				exit 1
 			fi
-		
+
 		else
 			# Bam file
 
@@ -65,7 +68,7 @@ task getReadLengthAndCoverage {
 				echo "Finding neither, we will index with samtools."
 				samtools index ~{inputBamOrCram} ~{inputBamOrCram}.bai
 			fi
-			
+
 			goleft covstats -f ~{refGenome} ~{inputBamOrCram} >> this.txt
 
 			COVOUT=$(tail -n +2 this.txt)
@@ -95,7 +98,7 @@ task getReadLengthAndCoverage {
 	# in terms of determining if something is a cram ahead of time
 	# in order to maximize savings.
 
-	Int finalDiskSize = refSize + indexSize + (2*thisAmSize)
+	Int finalDiskSize = refSize + indexSize + (2*thisAmSize) + additionalDisk
 
 	output {
 		Int outReadLength = read_int("thisReadLength")
@@ -105,8 +108,9 @@ task getReadLengthAndCoverage {
 	}
 	runtime {
 		docker: if toUse == "true" then "quay.io/biocontainers/goleft:0.2.0--0" else "quay.io/aofarrel/goleft-covstats:circleci-push"
-		preemptible: 1
+		preemptible: preemptible
 		disks: "local-disk " + finalDiskSize + " HDD"
+		memory: memSize + "G"
 	}
 }
 
@@ -117,6 +121,8 @@ task report {
 		Array[String] filenames
 		Int lenReads = length(readLengths)
 		Int lenCov = length(coverages)
+		Int memSize
+		Int preemptible
 	}
 
 	command <<<
@@ -156,7 +162,8 @@ task report {
 
 	runtime {
 		docker: "python:3.8-slim"
-		preemptible: 2
+		preemptible: preemptible
+		memory: memSize + "G"
 	}
 }
 
@@ -166,6 +173,11 @@ workflow covstats {
 		Array[File]? inputIndexes
 		File? refGenome
 		String? useLegacyContainer
+		Int covstatsMem = 2
+		Int reportMem = 2
+		Int additionalDisk = 1
+		Int covstatsPreemptible = 1
+		Int reportPreemptible = 1
 	}
 
 	# Fallback if no indecies are defined. Other methods exist but this is
@@ -176,7 +188,7 @@ workflow covstats {
 	# The choose container is printed in the task itself
 	String toUse = select_first([useLegacyContainer, "false"])
 
-	# Catching input typos from user doesn't seem possible due to how variables 
+	# Catching input typos from user doesn't seem possible due to how variables
 	# are scoped unfortunately, but I did make an attempt which I stored here
 	# https://gist.github.com/aofarrel/ef71e1a27d824cbcc8acb11b6abe6e19
 	# in case some brave soul wants to take a crack at it
@@ -184,13 +196,16 @@ workflow covstats {
 	# Call covstats
 	scatter(oneBamOrCram in inputBamsOrCrams) {
 		Array[String] allOrNoIndexes = select_first([inputIndexes, wholeLottaNada])
-		
-		call getReadLengthAndCoverage as scatteredGetStats { 
+
+		call getReadLengthAndCoverage as scatteredGetStats {
 			input:
 				inputBamOrCram = oneBamOrCram,
 				refGenome = refGenome,
 				allInputIndexes = allOrNoIndexes,
-				toUse = toUse
+				toUse = toUse,
+				memSize = covstatsMem,
+				additionalDisk = additionalDisk,
+				preemptible = covstatsPreemptible
 		}
 	}
 
@@ -199,7 +214,9 @@ workflow covstats {
 		input:
 			readLengths = scatteredGetStats.outReadLength,
 			coverages = scatteredGetStats.outCoverage,
-			filenames = scatteredGetStats.outFilenames
+			filenames = scatteredGetStats.outFilenames,
+			memSize = reportMem,
+			preemptible = reportPreemptible
 	}
 
 	meta {
