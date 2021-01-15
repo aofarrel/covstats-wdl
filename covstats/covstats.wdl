@@ -8,7 +8,7 @@ task getReadLengthAndCoverage {
 		String toUse
 		# runtime attributes with defaults
 		Int memSize = 2
-		Int preemptible = 1
+		Int preemptible = 0
 		Int additionalDisk = 0
 	}
 
@@ -178,10 +178,10 @@ workflow covstats {
 		# runtime attributes for covstats
 		Int covstatsMem = 2
 		Int additionalDisk = 0
-		Int covstatsPreemptible = 1
+		Int covstatsPreemptible = 0
 		# runtme attributes for report
 		Int reportMem = 2
-		Int reportPreemptible = 1
+		Int reportPreemptible = 2
 	}
 
 	# Fallback if no indecies are defined. Other methods exist but this is
