@@ -6,9 +6,10 @@ task getReadLengthAndCoverage {
 		Array[File] allInputIndexes
 		File? refGenome
 		String toUse
-		Int memSize
-		Int preemptible
-		Int additionalDisk
+		# runtime attributes with defaults
+		Int memSize = 2
+		Int preemptible = 1
+		Int additionalDisk = 0
 	}
 
 	command <<<
@@ -121,8 +122,9 @@ task report {
 		Array[String] filenames
 		Int lenReads = length(readLengths)
 		Int lenCov = length(coverages)
-		Int memSize
-		Int preemptible
+		# user runtime attributes
+		Int memSize = 2
+		Int preemptible = 2
 	}
 
 	command <<<
@@ -173,10 +175,12 @@ workflow covstats {
 		Array[File]? inputIndexes
 		File? refGenome
 		String? useLegacyContainer
+		# runtime attributes for covstats
 		Int covstatsMem = 2
-		Int reportMem = 2
-		Int additionalDisk = 1
+		Int additionalDisk = 0
 		Int covstatsPreemptible = 1
+		# runtme attributes for report
+		Int reportMem = 2
 		Int reportPreemptible = 1
 	}
 
