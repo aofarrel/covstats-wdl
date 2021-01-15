@@ -8,7 +8,7 @@ version 1.0
 # samtools can work a little differently. Keep that in mind especially if you wish to
 # roll your own Docker image here.
 
-import "https://github.com/nolwarre/covstats-wdl/raw/1814/specify-memory-disk-preempts/covstats/covstats.wdl" as covstats
+import "https://raw.githubusercontent.com/aofarrel/covstats-wdl/master/covstats/covstats.wdl" as covstats
 
 task md5sum {
   input {
