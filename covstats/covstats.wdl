@@ -7,8 +7,8 @@ task getReadLengthAndCoverage {
 		File? refGenome
 		String toUse
 		# runtime attributes with defaults
-		Int memSize = 2
-		Int preemptible = 0
+		Int covstatsMemSize = 2
+		Int covstatsPreempt = 1
 		Int additionalDisk = 0
 	}
 
@@ -109,9 +109,9 @@ task getReadLengthAndCoverage {
 	}
 	runtime {
 		docker: if toUse == "true" then "quay.io/biocontainers/goleft:0.2.0--0" else "quay.io/aofarrel/goleft-covstats:circleci-push"
-		preemptible: preemptible
+		preemptible: covstatsPreempt
 		disks: "local-disk " + finalDiskSize + " HDD"
-		memory: memSize + "G"
+		memory: covstatsMemSize + "G"
 	}
 }
 
@@ -122,9 +122,9 @@ task report {
 		Array[String] filenames
 		Int lenReads = length(readLengths)
 		Int lenCov = length(coverages)
-		# user runtime attributes
-		Int memSize = 2
-		Int preemptible = 2
+		# runtime attributes
+		Int reportMemSize = 2
+		Int reportPreempt = 2
 	}
 
 	command <<<
@@ -164,8 +164,8 @@ task report {
 
 	runtime {
 		docker: "python:3.8-slim"
-		preemptible: preemptible
-		memory: memSize + "G"
+		preemptible: reportPreempt
+		memory: reportMemSize + "G"
 	}
 }
 
@@ -176,9 +176,9 @@ workflow covstats {
 		File? refGenome
 		String? useLegacyContainer
 		# runtime attributes for covstats
-		Int covstatsMem = 2
+		Int covstatsMem = 8
 		Int additionalDisk = 0
-		Int covstatsPreemptible = 0
+		Int covstatsPreemptible = 1
 		# runtme attributes for report
 		Int reportMem = 2
 		Int reportPreemptible = 2
@@ -207,9 +207,9 @@ workflow covstats {
 				refGenome = refGenome,
 				allInputIndexes = allOrNoIndexes,
 				toUse = toUse,
-				memSize = covstatsMem,
+				covstatsMemSize = covstatsMem,
 				additionalDisk = additionalDisk,
-				preemptible = covstatsPreemptible
+				covstatsPreempt = covstatsPreemptible
 		}
 	}
 
@@ -219,8 +219,8 @@ workflow covstats {
 			readLengths = scatteredGetStats.outReadLength,
 			coverages = scatteredGetStats.outCoverage,
 			filenames = scatteredGetStats.outFilenames,
-			memSize = reportMem,
-			preemptible = reportPreemptible
+			reportMemSize = reportMem,
+			reportPreempt = reportPreemptible
 	}
 
 	meta {
