@@ -2,7 +2,7 @@ version 1.0
 
 # NOTE: If you wish to adapt this checker and make your own truth files, go ahead, but
 # I recommend that you always check both of the following:
-# 1) A cram file 
+# 1) A cram file
 # 2) A bam file, without also inputting its index
 # Both of these cases require calling samtools and as we all know different versions of
 # samtools can work a little differently. Keep that in mind especially if you wish to
@@ -19,7 +19,7 @@ task md5sum {
 
   command <<<
 
-  # Terra can mix up files 
+  # Terra can mix up files
 
   sort ~{report} > newreport.txt
   sort ~{truth} > newtruth.txt
@@ -78,8 +78,8 @@ workflow checker {
   # Call covstats
   scatter(oneBamOrCram in inputBamsOrCrams) {
     Array[String] allOrNoIndexes = select_first([inputIndexes, wholeLottaNada])
-    
-    call covstats.getReadLengthAndCoverage as scatteredGetStats { 
+
+    call covstats.getReadLengthAndCoverage as scatteredGetStats {
       input:
         inputBamOrCram = oneBamOrCram,
         refGenome = refGenome,
