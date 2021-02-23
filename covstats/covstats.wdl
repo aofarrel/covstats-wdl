@@ -21,7 +21,6 @@ task getReadLengthAndCoverage {
 		fi
 
 		start=$SECONDS
-
 		set -eux -o pipefail
 
 		if [ -f ~{inputBamOrCram} ]; then
@@ -31,10 +30,16 @@ task getReadLengthAndCoverage {
 				exit 1
 		fi
 
+		# Detect if inputBamOrCram is a BAM or a CRAM file
+		# A CRAM file requires a reference genome but not an index file
+		# A BAM file requires an index file but not a reference genome
+
 		AMIACRAM=$(echo ~{inputBamOrCram} | sed 's/\.[^.]*$//')
 
 		if [ -f ${AMIACRAM}.cram ]; then
 			echo "Cram file detected"
+
+			# Check if reference genome exists
 			if [ "~{refGenome}" != '' ]; then
 				goleft covstats -f ~{refGenome} ~{inputBamOrCram} >> this.txt
 				# Sometimes this.txt seems to be missing the header... investigate
@@ -44,24 +49,30 @@ task getReadLengthAndCoverage {
 				echo ${COVARRAY[11]} > thisReadLength
 				BASHFILENAME=$(basename ~{inputBamOrCram})
 				echo "'${BASHFILENAME}'" > thisFilename
+			
+			# Cram file but no reference genome
 			else
-				# Cram file but no reference genome
 				>&2 echo "Cram detected but cannot find reference genome."
 				>&2 echo "A reference genome is required for cram inputs."
 				exit 1
 			fi
 
 		else
-			# Bam file
+
+			# We now know it's a BAM file and must search for an index file
+			# or make one ourselves with samtools
 
 			OTHERPOSSIBILITY=$(echo ~{inputBamOrCram} | sed 's/\.[^.]*$//')
 
+			# Search for foo.bam.bai
 			if [ -f ~{inputBamOrCram}.bai ]; then
-				# foo.bam.bai
 				echo "Bai file already exists with pattern *.bam.bai"
+			
+			# Search for foo.bai
 			elif [ -f ${OTHERPOSSIBILITY}.bai ]; then
-				# foo.bai
 				echo "Bai file already exists with pattern *.bai"
+			
+			# No index file found, use samtools instead
 			else
 				echo "Input bai file not found. We searched for:"
 				echo "  ~{inputBamOrCram}.bai"
